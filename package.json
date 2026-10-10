@@ -1,0 +1,58 @@
+{
+  "name": "@hootlens/mcp",
+  "version": "1.0.2",
+  "description": "Hoot Lens MCP server: let AI assistants read recordings, replays, heatmaps, funnels and findings from Hoot Lens, with your own access.",
+  "mcpName": "com.hootlens/mcp",
+  "type": "module",
+  "license": "MIT",
+  "author": "Parallel Platforms",
+  "homepage": "https://hootlens.com/docs/MCP.md",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Parallel-Platforms/hootlens-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Parallel-Platforms/hootlens-mcp/issues",
+    "email": "support@hootlens.com"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "hootlens",
+    "hoot-lens",
+    "replay",
+    "heatmaps",
+    "analytics",
+    "ux",
+    "ai-agents"
+  ],
+  "bin": {
+    "hootlens-mcp": "dist/cli.mjs"
+  },
+  "files": [
+    "dist/cli.mjs",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/source.test.mjs"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/server": "2.3.1",
+    "esbuild": "^0.28.1",
+    "zod": "^4.1.12",
+    "@modelcontextprotocol/client": "2.3.1",
+    "@types/node": "22.20.5",
+    "typescript": "5.9.3"
+  },
+  "private": true,
+  "workspaces": [
+    "packages/core"
+  ]
+}

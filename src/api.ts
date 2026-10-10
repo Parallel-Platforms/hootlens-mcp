@@ -12,7 +12,7 @@ export type Surface = 'stdio' | 'hosted';
 export interface RequestContext {
   tool: string;
   /** The project scope the route needs. */
-  scope?: 'read' | 'replay' | 'annotate' | 'configure';
+  scope?: 'read' | 'replay' | 'annotate';
   projectId?: string;
 }
 
@@ -95,10 +95,6 @@ export class Api {
       return new ToolError(rateLimitMessage(seconds) + (apiMessage ? ` (${apiMessage}.)` : ''), 'rate_limited', 429, seconds ?? 60);
     }
     if (status === 403) {
-      // Settings tools can only make privacy stricter. Say so plainly rather than hinting at a missing scope.
-      if (detail?.code === 'privacy_weakening_refused') {
-        return new ToolError(`${tool} was refused (403): ${apiMessage ?? 'it would make privacy looser'}. Nothing was changed. The site owner can make this change in Hoot Lens settings.`, 'privacy_weakening_refused', 403);
-      }
       if (detail?.code === 'staff_only') return new ToolError(`${STAFF_ONLY} Other keys are refused.`, 'staff_only', 403);
       if (projectId !== undefined) {
         const projects = await this.accessibleProjects();
@@ -109,7 +105,7 @@ export class Api {
       // A specific refusal ('AI explanations are turned off for this project') is more useful than a scope hint.
       if (apiMessage && !/does not permit|role on this (project|site)/i.test(apiMessage)) return new ToolError(`${tool} was refused (403): ${apiMessage}.`, 'api_error', 403);
       if (scope !== undefined) {
-        return new ToolError(`${tool} was refused (403). It needs the "${scope}" scope on project ${projectId ?? 'this project'}, and this credential does not have it (or the person who made it no longer has the permission that allows it: for example, viewers cannot annotate). ${grantAdvice(scope)}`, 'missing_scope', 403);
+        return new ToolError(`${tool} was refused (403). It needs the "${scope}" scope on project ${projectId ?? 'this project'}, and this credential does not have it (or the person who made it no longer has a role that allows it: viewers cannot annotate). ${grantAdvice(scope)}`, 'missing_scope', 403);
       }
       return new ToolError(`Hoot Lens refused ${tool} (403)${apiMessage ? `: ${apiMessage}` : ''}. The credential may lack the scope or project access this needs. ${grantAdvice('read')}`, 'missing_scope', 403);
     }
