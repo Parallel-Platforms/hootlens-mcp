@@ -41,7 +41,10 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/source.test.mjs"
+    "test": "node --test tests/source.test.mjs tests/release.test.mjs",
+    "release:prepare": "node scripts/release.mjs stage",
+    "release:pack": "node scripts/release.mjs pack",
+    "release:verify-publish": "node scripts/release.mjs verify-publish"
   },
   "devDependencies": {
     "@modelcontextprotocol/server": "2.3.1",

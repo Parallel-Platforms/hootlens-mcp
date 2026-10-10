@@ -6,12 +6,14 @@ The server files in `src` and shared files in `packages/core` come from that rel
 
 The earlier public snapshot included viewer and configuration development files not shipped in the local npm release. Those are removed here so the source, version and installation instructions agree. Hosted server capabilities can still be newer than this local package.
 
-## Synchronize a future release
+## Synchronize an already published source snapshot
+
+These steps describe historical exports from the monorepo's existing publisher. Preparing a new unpublished release through public CI uses [RELEASING.md](RELEASING.md) instead. For that migration, the new npm `gitHead` and attestation identify the public build commit; the imported monorepo commit remains a separate source reference. Do not claim the two commit identities or independently built bundle bytes are identical.
 
 1. Fetch the exact release tag from the owner's monorepo. Compare its commit with `npm view @hootlens/mcp@VERSION gitHead dist.integrity --json`. Do not export a development branch under a published version.
 2. Copy `services/mcp/src`, the shared `packages/core` source required by it, `server.json`, `LICENSE` and `CHANGELOG.md`. Review the complete file set for secrets and customer data. Preserve the source mirror's build, test and CI files.
 3. Update the root manifest and dependency lock from that release, keeping this mirror private. Adapt build paths and include any new shared runtime dependencies. Regenerate the normalized hashes and release identity in `SOURCE.json` from the tagged source, rather than hashing an unverified working tree.
 4. Run `npm ci`, `npm run typecheck`, `npm run build`, `npm test`, and check the built executable's version. Review the actual public CI matrix, the installed npm artifact and the hosted endpoint separately.
-5. Open a public repository PR. Merge after independent review and passing required checks. Synchronize official registry metadata with the already published npm version, using the owner's existing domain proof. Do not republish npm from this repository.
+5. Open a public repository PR. Merge after independent review and passing required checks. Synchronize official registry metadata with the already published npm version, using the owner's existing domain proof. Historical exports do not authorize republishing an existing npm version. A future migration to public CI requires the separate [release preparation and owner setup](RELEASING.md); its proposed pipeline remains unpublished until those conditions are met.
 
 Neither a local fixture test nor a matching version proves production authorization, customer capture, signed-in client compatibility or directory acceptance. Keep those checks in their own evidence records.

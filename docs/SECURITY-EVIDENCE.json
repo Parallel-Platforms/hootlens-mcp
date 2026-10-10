@@ -1,0 +1,202 @@
+{
+  "scanner": {
+    "package": "mcptrustchecker",
+    "version": "1.14.0",
+    "methodology": "mcptrustchecker-1.14"
+  },
+  "sourceScans": [
+    {
+      "packageVersion": "1.0.1",
+      "scannedAt": "2026-10-10T19:59:40.158Z",
+      "surfaceDigest": "921c45d73a4f849265cf6a3df51dbacc0f7ab9fdccd5406c10fc74ef0f5f5458",
+      "clientScore": 93,
+      "threatScore": 100,
+      "capabilityLevel": "high",
+      "coverage": {
+        "toolSurface": false,
+        "implementationSource": true,
+        "packageMetadata": true,
+        "liveTransport": false
+      },
+      "stats": {
+        "tools": 0,
+        "prompts": 0,
+        "resources": 0,
+        "findingsBySeverity": {
+          "critical": 0,
+          "high": 2,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        }
+      },
+      "findings": [
+        {
+          "ruleId": "MTC-SRC-001",
+          "axis": "capability",
+          "file": "dist/cli.mjs",
+          "line": 29308
+        },
+        {
+          "ruleId": "MTC-SRC-002",
+          "axis": "capability",
+          "file": "dist/cli.mjs",
+          "line": 626
+        }
+      ],
+      "scoreTerms": [
+        {
+          "term": "capability-exposure",
+          "level": "high",
+          "penalty": 6
+        },
+        {
+          "term": "verification-discount",
+          "level": "repo",
+          "penalty": 1
+        },
+        {
+          "term": "coverage-honesty",
+          "level": "source",
+          "penalty": 0
+        }
+      ]
+    },
+    {
+      "packageVersion": "1.0.2",
+      "scannedAt": "2026-10-10T20:00:11.887Z",
+      "surfaceDigest": "921c45d73a4f849265cf6a3df51dbacc0f7ab9fdccd5406c10fc74ef0f5f5458",
+      "clientScore": 93,
+      "threatScore": 100,
+      "capabilityLevel": "high",
+      "coverage": {
+        "toolSurface": false,
+        "implementationSource": true,
+        "packageMetadata": true,
+        "liveTransport": false
+      },
+      "stats": {
+        "tools": 0,
+        "prompts": 0,
+        "resources": 0,
+        "findingsBySeverity": {
+          "critical": 0,
+          "high": 2,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        }
+      },
+      "findings": [
+        {
+          "ruleId": "MTC-SRC-001",
+          "axis": "capability",
+          "file": "dist/cli.mjs",
+          "line": 29308
+        },
+        {
+          "ruleId": "MTC-SRC-002",
+          "axis": "capability",
+          "file": "dist/cli.mjs",
+          "line": 626
+        }
+      ],
+      "scoreTerms": [
+        {
+          "term": "capability-exposure",
+          "level": "high",
+          "penalty": 6
+        },
+        {
+          "term": "verification-discount",
+          "level": "repo",
+          "penalty": 1
+        },
+        {
+          "term": "coverage-honesty",
+          "level": "source",
+          "penalty": 0
+        }
+      ]
+    }
+  ],
+  "runtimeScan": {
+    "packageVersion": "1.0.2",
+    "scannedAt": "2026-10-10T20:01:08.259Z",
+    "surfaceDigest": "db6da934ae5da4b0118eccc819bd50f6bd39fcd4c4a1fdea59b63e38f1e6a4bb",
+    "clientScore": 97,
+    "threatScore": 100,
+    "coverage": {
+      "toolSurface": true,
+      "implementationSource": false,
+      "packageMetadata": false,
+      "liveTransport": true
+    },
+    "stats": {
+      "tools": 32,
+      "prompts": 5,
+      "resources": 4,
+      "findingsBySeverity": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      }
+    },
+    "findings": [],
+    "tools": [
+      "list_projects",
+      "get_install_snippet",
+      "check_install",
+      "start_setup",
+      "check_setup",
+      "list_recordings",
+      "list_sessions",
+      "list_segments",
+      "get_traffic",
+      "get_session_narrative",
+      "get_recording",
+      "add_note",
+      "review_findings",
+      "explain_snags",
+      "list_heatmaps",
+      "get_heatmap",
+      "list_changes",
+      "log_change",
+      "change_impact",
+      "list_goals",
+      "list_funnels",
+      "get_funnel",
+      "weekly_summary",
+      "submit_issue",
+      "list_my_issues",
+      "get_issue",
+      "reply_issue",
+      "triage_queue",
+      "issue_feed",
+      "claim_issue",
+      "set_issue_status",
+      "update_issue"
+    ],
+    "artifactIntegrity": "sha512-vn+Z5DTnVPw3K73tQawI3TRksLTVCoY7ie8ZG+CBRBTfwvm3h5CBQB3VdfTFk9QNV1zyl8K6VJHO6aBkn5Y4Ug==",
+    "artifactIntegrityIndependentlyMatched": true,
+    "fixture": "synthetic loopback HTTP, fake access token, all toolsets, no customer data",
+    "fixtureRequests": [
+      {
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "method": "GET",
+        "path": "/v1/projects"
+      }
+    ]
+  },
+  "limitations": [
+    "Selected report fields, not signed attestations",
+    "Source scans have no runtime enumeration; runtime scan has no source or package metadata",
+    "Surface digests are not npm tarball hashes",
+    "Synthetic runtime scan does not establish production authorization or every tool effect"
+  ]
+}

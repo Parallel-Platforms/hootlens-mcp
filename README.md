@@ -4,6 +4,8 @@ Give your coding agent evidence from website visits: recordings, click maps, fun
 
 This repository contains the buildable source of [`@hootlens/mcp` 1.0.2](https://www.npmjs.com/package/@hootlens/mcp/v/1.0.2). Releases are published from the Hoot Lens monorepo. Issues and questions are welcome here.
 
+[Public release preparation](docs/RELEASING.md) proposes a reviewed migration to public CI with npm provenance for a future version. It has not published a new version or changed npm publisher settings. [Security scan evidence](docs/SECURITY-EVIDENCE.md) separates published-source inspection from synthetic runtime enumeration.
+
 ## Try a first investigation without an account
 
 Connect a remote MCP client to:
