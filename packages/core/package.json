@@ -1,0 +1,18 @@
+{
+  "name": "@hootlens/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./targeting": "./src/targeting.ts",
+    "./sources": "./src/sources.ts",
+    "./automation": "./src/automation.ts",
+    "./page-groups": "./src/page-groups.ts",
+    "./version-labels": "./src/version-labels.ts",
+    "./install-guides": "./src/install-guides.ts"
+  },
+  "dependencies": {
+    "zod": "^4.1.12"
+  }
+}

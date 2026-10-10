@@ -26,7 +26,7 @@ export interface CliIo {
 }
 
 const HELP: Record<Command, string> = {
-  login: `Usage: hootlens-mcp login [--scopes read,replay,annotate,configure]
+  login: `Usage: hootlens-mcp login [--scopes read,replay,annotate]
 
 Signs in through your browser and saves the sign-in (macOS Keychain, Linux Secret Service, or a private file in your config directory).
 The default scopes are ${DEFAULT_LOGIN_SCOPES.join(', ')}. You choose the projects to share in the browser.

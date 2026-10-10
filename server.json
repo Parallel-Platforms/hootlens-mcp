@@ -4,12 +4,12 @@
   "title": "Hoot Lens",
   "description": "Read Hoot Lens recordings, replays, heatmaps, funnels and findings with your own account.",
   "websiteUrl": "https://hootlens.com",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@hootlens/mcp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

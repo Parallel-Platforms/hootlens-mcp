@@ -12,16 +12,16 @@ These steps are for an AI agent (such as Cline) setting up Hoot Lens for a user.
 Run this once. It opens the browser so the user can choose which Hoot Lens projects and permissions to share:
 
 ```sh
-npx -y @hootlens/mcp login
+npx -y @hootlens/mcp@1.0.2 login --scopes read,replay
 ```
 
 Confirm with:
 
 ```sh
-npx -y @hootlens/mcp whoami
+npx -y @hootlens/mcp@1.0.2 whoami
 ```
 
-If the user prefers an access key instead, they create one in the Hoot Lens dashboard (Settings, AI assistant). Ask them for it; never guess or invent one. It goes in `HOOTLENS_PAT` below.
+If the user prefers an access key instead, they create one in the Hoot Lens dashboard (Settings, AI assistant) and supply it through the client's private environment as `HOOTLENS_PAT`. Never invent a key, print it, or save it in committed source. A set `HOOTLENS_PAT` overrides the saved sign-in.
 
 ## 3. Add the server to Cline
 
@@ -32,7 +32,7 @@ Add this entry to `cline_mcp_settings.json` under `mcpServers`:
   "mcpServers": {
     "hootlens": {
       "command": "npx",
-      "args": ["-y", "@hootlens/mcp"],
+      "args": ["-y", "@hootlens/mcp@1.0.2", "--toolsets", "read,replay"],
       "disabled": false,
       "autoApprove": []
     }
@@ -47,7 +47,7 @@ With an access key instead of the browser sign-in:
   "mcpServers": {
     "hootlens": {
       "command": "npx",
-      "args": ["-y", "@hootlens/mcp"],
+      "args": ["-y", "@hootlens/mcp@1.0.2", "--toolsets", "read,replay"],
       "env": { "HOOTLENS_PAT": "hl_pat_..." },
       "disabled": false,
       "autoApprove": []
@@ -77,10 +77,10 @@ To try Hoot Lens on sample data from a fictional app, with no sign-in, use the h
 
 ## 5. Verify
 
-Call the `whoami` tool. It returns the signed-in user, scopes and projects. Then call `list_projects` and pick the site that belongs to the user's repository.
+On the hosted demo, call the `whoami` tool and confirm it identifies synthetic Fieldnote data. On local package 1.0.2, `whoami` is a CLI command, not an MCP tool: run `npx -y @hootlens/mcp@1.0.2 whoami` to check the saved sign-in. Then call `list_projects` through your actual MCP connection and pick the site that belongs to the user's repository. Inspect `tools/list`: hosted capabilities can be newer than this local release.
 
 ## Troubleshooting
 
 - "Sign-in has ended": run `npx -y @hootlens/mcp login` again.
-- No projects listed: the account has no Hoot Lens site yet. Create one at https://hootlens.com.
+- No projects listed: check `whoami` for the current sign-in and shared projects. Sign in again to share an existing site, and check current membership if access changed. Create a site at https://hootlens.com only if the account has none.
 - Full docs: https://hootlens.com/docs/MCP.md
