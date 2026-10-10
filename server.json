@@ -1,0 +1,55 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.hootlens/mcp",
+  "title": "Hoot Lens",
+  "description": "Read Hoot Lens recordings, replays, heatmaps, funnels and findings with your own account.",
+  "websiteUrl": "https://hootlens.com",
+  "version": "1.0.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@hootlens/mcp",
+      "version": "1.0.1",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "HOOTLENS_PAT",
+          "description": "Hoot Lens access key (dashboard, Settings, AI assistant). Optional: without it the server uses the sign-in from 'npx -y @hootlens/mcp login'.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "HOOTLENS_API_URL",
+          "description": "Hoot Lens API origin. Leave unset to use the production API.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "HOOTLENS_PROJECT",
+          "description": "Project ID that tools use by default.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "HOOTLENS_TOOLSETS",
+          "description": "Comma separated toolsets to offer: read, replay, annotate, install, feedback, issues, default, all.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.hootlens.com/mcp"
+    }
+  ]
+}
