@@ -24,3 +24,5 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
+      - run: npm run release:prepare
+      - run: npm run release:pack
