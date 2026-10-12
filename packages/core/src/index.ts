@@ -1,21 +1,32 @@
 import { z } from 'zod';
 import { aiSettingsSchema, type AiSettings } from './explanations.js';
+import { elementContextSchema, type ElementContext, type TopSnag } from './element-context';
+import { SOURCE_LOCATION_MAX_LENGTH, parseSourceLocation } from './source-location';
 export * from './explanations.js';
 import { TARGETING_MAX_RULES, targetingRuleError } from './targeting';
+import { type PathPreset } from './path-privacy';
+import { pathPresetsSchema } from './path-preset-schema';
 import { GROUP_ID_PATTERN, LOCALE_PREFIX_PATTERN, MAX_GROUPS, MAX_GROUP_RULES, MAX_VARIANT_VALUE, PARAM_NAME_PATTERN, type GroupingOptions, type PageGroup } from './page-groups';
 import { MAX_GOALS, trackerGoalSchema, type Goal, type GoalStat } from './changes';
+import { PREVIEW_ORIGIN_LIMIT } from './preview-origins';
 import type { Funnel } from './funnels';
 import type { SavedSegment } from './saved-segments';
 import type { ElementDisplayName } from './element-display-names';
 import type { AutomationReason, AutomationVerdict } from './automation';
+import { INTERNAL_IP_RULE_LIMIT, isExitDestination, normalizeIpRules, EXIT_MAX_LENGTH, type InternalTraffic } from './internal-traffic';
 
 export * from './automation';
+export * from './internal-traffic';
 export * from './automation-agents';
 export * from './changes';
 export * from './deploys';
+export * from './webhooks';
 export * from './version-labels';
+export * from './element-context';
 export * from './impact';
 export * from './funnels';
+export * from './page-suggestions';
+export * from './starter-funnels';
 export * from './saved-segments';
 export * from './element-name';
 export * from './element-display-names';
@@ -24,14 +35,19 @@ export * from './digest';
 export * from './replay-seek';
 export * from './trends';
 export * from './sources';
+export * from './errors';
+import { recordedErrorsSchema, type LinkedError, type RecordingError } from './errors';
 
 export * from './targeting';
+export * from './path-privacy';
+export * from './path-preset-schema';
 import { AD_NETWORKS, CHANNELS, IN_APPS, type AdNetwork, type Channel, type InApp } from './sources';
 import { DEFAULT_CONSENT_REGIONS, MAX_CONSENT_REGIONS, normalizeConsentRegions } from './consent-regions';
 
 export * from './consent-regions';
 export * from './page-groups';
 export * from './signup-source';
+export * from './business';
 
 export const idSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/);
 
@@ -63,6 +79,12 @@ export const privacyPolicySchema = z.object({
   unmaskInputSelectors: z.array(selectorSchema).max(20).default([]),
   /** Keep URL query strings in recorded paths. Fragments are always dropped. */
   captureQueryStrings: z.boolean().default(false),
+  /**
+   * Keep digits in campaign parameter values (`utm_*`). Balanced and strict redact long digit runs everywhere, which
+   * turns numeric ad-platform ids ({campaignid}, {adgroupid}) into `*`. These are marketing labels, so an owner can keep
+   * them. Email addresses in campaign values are still redacted, and nothing else changes. Absent means off.
+   */
+  keepCampaignDigits: z.boolean().optional(),
 });
 export type PrivacyPreset = z.infer<typeof privacyPresetSchema>;
 export type PrivacyPolicy = z.infer<typeof privacyPolicySchema>;
@@ -145,6 +167,19 @@ export const groupingOptionsSchema = z.object({
   pageVersionMode: z.enum(['release', 'content']).optional(),
 });
 
+/** The owner's internal traffic rules: whether the internal link counts, and the listed addresses (validated and normalized). */
+export const internalTrafficSchema = z.object({
+  browser: z.boolean(),
+  ips: z.array(z.string().trim().max(60)).max(INTERNAL_IP_RULE_LIMIT).default([]),
+}).transform((value, ctx): InternalTraffic => {
+  const normalized = normalizeIpRules(value.ips);
+  if (!normalized.ok) {
+    ctx.issues.push({ code: 'custom', message: normalized.error, input: value.ips, path: ['ips'] });
+    return { browser: value.browser, ips: [] };
+  }
+  return { browser: value.browser, ips: normalized.rules };
+});
+
 /** Tracker configuration served publicly by GET /v1/projects/:projectId/config. */
 export const trackerConfigSchema = z.object({
   projectId: idSchema,
@@ -158,10 +193,14 @@ export const trackerConfigSchema = z.object({
   capture: z.enum(['on', 'paused']).optional(),
   /** Page paths to record. Absent records every path. */
   targeting: pageTargetingSchema.optional(),
+  /** Per-path presets: stricter privacy on matching pages. Absent means none. */
+  pathPresets: pathPresetsSchema.optional(),
   /** Extra query parameters that name an experiment variant, beyond the built-in list. */
   variantParams: z.array(variantParamSchema).max(20).optional(),
   /** Selector goals the tracker tests clicks against in the page. Only ids leave the browser, never the page. */
   goals: z.array(trackerGoalSchema).max(MAX_GOALS).optional(),
+  /** True when the site records JavaScript errors. Absent means off (projects created before error recording). */
+  errors: z.boolean().optional(),
 });
 export type TrackerConfig = z.infer<typeof trackerConfigSchema>;
 
@@ -203,8 +242,21 @@ export const clickSchema = z.object({
    * redacted in balanced, never read from private, masked, blocked or form regions.
    */
   label: z.string().max(LABEL_MAX_LENGTH).optional(),
+  /**
+   * Where the clicked element is written in the site's source, as `path:line`, read from the nearest `data-hoot-src` a
+   * Hoot Lens build plugin stamped. Developer-authored like `data-hoot-id`; a value that is not a repository-relative
+   * `path:line` is dropped by the tracker and rejected here.
+   */
+  source: z.string().max(SOURCE_LOCATION_MAX_LENGTH).refine(value => parseSourceLocation(value) !== undefined, 'Invalid source location').optional(),
   /** Ids of the project's selector goals this click matched in the page. The collector ignores ids that are not the project's goals. */
   goals: z.array(idSchema).max(10).optional(),
+  /**
+   * Short context of the clicked element (tag, region, and under full and balanced the nearest heading and its own text),
+   * computed in the browser under the project's privacy policy. See element-context.ts.
+   */
+  context: elementContextSchema.optional(),
+  /** False when the clicked target is not a link, button or other control. Omitted when the tracker did not say; older trackers never send it. */
+  interactive: z.boolean().optional(),
 });
 export const scrollSchema = z.object({
   /** Deepest bottom edge of the viewport reached, in document CSS pixels. */
@@ -256,6 +308,14 @@ export const segmentSchema = z.object({
   /** Primary language tag of `<html lang>`, such as `es`. */
   locale: z.string().regex(/^[a-z]{2,3}$/).optional(),
   /**
+   * True when the visitor's browser had translated the page (Chrome Translate and the like) at its first snapshot.
+   * Then `locale` is the language they read, `pageFingerprint` is absent, and the visit stays in the page version
+   * its source language already has. See tracker translation.ts.
+   */
+  translated: z.literal(true).optional(),
+  /** The page's own language, such as `en`, when it was read before the translation. Only with `translated`. */
+  sourceLocale: z.string().regex(/^[a-z]{2,3}$/).optional(),
+  /**
    * The experiment parameter of the page URL, sent only when the recorded path has no query string.
    * The collector applies the privacy preset again: strict keeps allow-listed names with hashed values.
    */
@@ -306,9 +366,18 @@ export const batchSchema = z.object({
   final: z.boolean().optional(),
   /** Bitmask of automation signals the tracker observed in this page load, see AUTOMATION_BITS. Omitted when none. */
   auto: z.number().int().min(0).max(65535).optional(),
+  /** True when this browser opened the site's internal link (see internal-traffic.ts). The collector honors it only if the site allows it. */
+  internal: z.literal(true).optional(),
+  /**
+   * Where the visitor went when a click left the page, on the final batch: a same-site path with no query or fragment, or another
+   * site's origin only. See isExitDestination. Never a full URL.
+   */
+  exit: z.string().max(EXIT_MAX_LENGTH).refine(isExitDestination, 'Invalid exit destination').optional(),
+  /** JavaScript errors of this page view since the previous batch. Dropped by the collector unless the project records errors. */
+  errors: recordedErrorsSchema.optional(),
 }).superRefine((v, ctx) => {
   if (v.endedAt < v.segment.startedAt) ctx.addIssue({code:'custom', message:'Invalid recording interval'});
-  if (!v.events.length && !v.clicks.length && !v.scroll && !v.moves?.cells.length) ctx.addIssue({code:'custom', message:'Empty batch'});
+  if (!v.events.length && !v.clicks.length && !v.scroll && !v.moves?.cells.length && !v.errors?.length) ctx.addIssue({code:'custom', message:'Empty batch'});
 });
 export type Click = z.infer<typeof clickSchema>;
 export type Segment = z.infer<typeof segmentSchema>;
@@ -333,9 +402,17 @@ export interface GroupedSegment extends Segment {
 }
 export interface Recording extends GroupedSegment {
   endedAt: number; clicks: Click[]; eventCount: number; batchCount: number; scroll?: Scroll;
+  /** Time on the page without idle time, and the idle time left out. See RecordingSummary.durationMs. */
+  durationMs?: number; idleMs?: number;
   /** See RecordingSummary: strong automation signals fired for this page view. */
   automated?: true;
   automation?: AutomationVerdict;
+  /** True when the site's team made this page view (internal link or listed address). Internal visits reach no aggregate and, by default, are left out of lists. */
+  internal?: true;
+  /** Ids of the goals this page view converted, under the goal definitions at the time. Absent when none. */
+  goalIds?: string[];
+  /** Where the page view's last link led when a click left the page: a same-site path, or another site's origin only. Absent when no click left it. */
+  exitTo?: string;
 }
 /** Deliberate validation visits stay available without becoming customer findings. */
 export function isControlledRecording(recording:Pick<Segment,'variant'>):boolean {
@@ -352,12 +429,18 @@ export interface Project {
   sampleRate?: number;
   /** Absent on projects created before AI explanations; treat as off. */
   ai?: AiSettings;
+  /** Patterns for preview deploy hosts (preview-origins.ts). They may send test visits only. Absent means none. */
+  previewOrigins?: string[];
   /** Page paths to record. Absent records every path. */
   targeting?: { include: string[]; exclude: string[] };
+  /** Per-path privacy presets, such as safe-form for application forms. Only ever stricter than `privacy`. Absent means none. */
+  pathPresets?: PathPreset[];
   /** Page groups in match order. Absent means every page is in its automatic group. */
   pageGroups?: PageGroup[];
   /** Locale prefix, experiment parameter and page version mode overrides. */
   grouping?: GroupingOptions;
+  /** How the site's own team is told apart from visitors (see internal-traffic.ts). Absent means nobody is. Owner only. */
+  internalTraffic?: InternalTraffic;
   /** What counts as a conversion. Absent means none are set. */
   goals?: Goal[];
   /** Ordered goal sequences. Absent means none are set. */
@@ -368,8 +451,12 @@ export interface Project {
   elementNames?: ElementDisplayName[];
   /** When privacy, consent, sample rate or page targeting last changed. Absent if never changed after creation. */
   updatedAt?: number;
+  /** Record JavaScript errors. Absent on projects created before error recording; treat as off until the owner turns it on. */
+  errorCapture?: boolean;
 }
 export const projectPrivacy = (project: Pick<Project,'privacy'>): PrivacyPolicy => project.privacy ?? defaultPrivacyPolicy('strict');
+/** Whether the site records JavaScript errors. Projects created before the setting existed stay off until the owner turns it on. */
+export const projectErrorCapture = (project: Pick<Project,'errorCapture'>): boolean => project.errorCapture === true;
 export const projectConsent = (project: Pick<Project,'consent'>): ConsentMode => project.consent ?? 'required';
 export const projectConsentRegions = (project: Pick<Project,'consentRegions'>): string[] => project.consentRegions ?? [...DEFAULT_CONSENT_REGIONS];
 export interface TokenRecord { id: string; projectId: string; ownerId: string; name: string; hash: string; scopes: TokenScope[]; createdAt: number; expiresAt: number; revokedAt?: number;
@@ -377,8 +464,12 @@ export interface TokenRecord { id: string; projectId: string; ownerId: string; n
   client?: TokenClient;
   /** When the key last authorized a request. Written at most once an hour. */
   lastUsedAt?: number; }
-/** `annotate` lets a key log and remove change markers. It is separate from `read` and `replay` and grants neither. */
-export const PROJECT_TOKEN_SCOPES = ['read', 'replay', 'annotate'] as const;
+/**
+ * `annotate` lets a key log and remove change markers. It is separate from `read` and `replay` and grants neither.
+ * `configure` lets a key preview and apply changes to the site's settings (page targeting, goals, funnels, stricter privacy).
+ * It is effective only for owners (editors: goals and funnels) and can never weaken privacy.
+ */
+export const PROJECT_TOKEN_SCOPES = ['read', 'replay', 'annotate', 'configure'] as const;
 export type ProjectTokenScope = (typeof PROJECT_TOKEN_SCOPES)[number];
 /**
  * `triage` lets a key work the issues queue as staff. Only staff can put it on a key, it acts only while its creator is
@@ -396,6 +487,12 @@ export function owlSignal(clicks: Click[]): { state: OwlState; label: string; ev
   if (clicks.length) return {state:'curious', label:'Exploring', evidence:`${clicks.length} observed clicks. This describes behavior, not emotion.`};
   return {state:'quiet', label:'No snags spotted', evidence:'No snags were captured in this selection.'};
 }
+/**
+ * A visit ends after this long without the visitor doing anything (30 minutes, the usual analytics inactivity timeout).
+ * The tracker starts a new visit when the visitor comes back after it, and the collector leaves the idle time out of a
+ * visit's duration. Mirrored by SESSION_IDLE_MS in the tracker, which cannot import the main entry.
+ */
+export const VISIT_IDLE_MS = 30 * 60 * 1000;
 export const segmentDeviceClass = (s: Pick<Segment,'deviceClass'|'viewport'>): DeviceClass => s.deviceClass ?? deviceClass(s.viewport.width);
 /**
  * Heatmaps group by page group, release, page revision and device class. Locale and variant are
@@ -445,25 +542,47 @@ export interface RecordingSummary extends Segment {
   /** The page version the collector derived (content mode). Absent in release mode, where `buildId` is the version. */
   pageVersion?: string;
   endedAt: number; eventCount: number; batchCount: number; scroll?: Scroll;
+  /**
+   * Time on the page, in milliseconds, without idle time: stretches of 30 minutes or more with no visitor activity (a tab
+   * left open) are left out, and so is a trailing stretch that long. `endedAt - startedAt` is the elapsed time and can be
+   * far longer. Absent on older recordings, where the elapsed time is all there is.
+   */
+  durationMs?: number;
+  /** The idle time left out of `durationMs`. Absent when none was. */
+  idleMs?: number;
   clickCount: number; rageClickCount: number; deadClickCount: number; errorClickCount: number;
+  /** JavaScript errors recorded in the page view (distinct errors, at most 20). Absent when none. */
+  errorCount?: number;
   /** Labels the team put on the recording, from the project's tag vocabulary. Absent when it has none. */
   tags?: string[];
   /** True when strong automation signals fired. Automated visits are left out of every aggregate and, by default, out of lists. */
   automated?: true;
   /** The signals behind `automated`, or behind a suspected visit (`automation.level` is `suspected` and `automated` is absent). */
   automation?: AutomationVerdict;
+  /** True when the site's team made this page view (internal link or listed address). Internal visits reach no aggregate and, by default, are left out of lists. */
+  internal?: true;
+  /** Ids of the goals this page view converted, under the goal definitions at the time. Absent when none. */
+  goalIds?: string[];
+  /** Where the page view's last link led when a click left the page: a same-site path, or another site's origin only. Absent when no click left it. */
+  exitTo?: string;
 }
 /**
  * GET /v1/projects/:projectId/recordings?cursor=&limit=&path=&deviceClass=&minDurationMs=&signal=rage|dead|error&controlled=exclude|include|only
  *   &automated=exclude|include|only&utmSource=&utmCampaign=&referrer=&browser=&os=&newVisitor=true|false&from=&to=&group=&locale=&variant=&tag=
- *   &country=&subdivision=&channel=&adNetwork=&inApp=&entryPage=
+ *   &country=&subdivision=&channel=&adNetwork=&inApp=&entryPage=&internal=exclude|include|only&goal=&element=
  * `controlled` defaults to exclude, so deliberate validation visits stay out of normal lists. `automated` defaults to
- * exclude, so automated visits stay out too; `include` lists both and `only` lists just the automated ones.
+ * exclude, so automated visits stay out too; `include` lists both and `only` lists just the automated ones. `internal` works the
+ * same way for the site team's own visits. `goal` is a goal id or name: only page views that converted it. `element` is a
+ * `data-hoot-id`, an element key as findings and heatmaps list it, or a selector: only page views with a click on it.
  */
 export interface RecordingPage { recordings: RecordingSummary[]; nextCursor?: string; }
 /** One visit made of page views stitched by the tracker's shared sessionId. */
 export interface SessionSummary {
   sessionId: string; startedAt: number; endedAt: number;
+  /** Time on the site without idle time, the sum of the page views' `durationMs`. `endedAt - startedAt` is the elapsed time. Absent on older visits. */
+  durationMs?: number;
+  /** The idle time left out of `durationMs`. Absent when none was. */
+  idleMs?: number;
   pageCount: number;
   /** Page paths in play order, one entry per page view (at most 50). */
   paths: string[];
@@ -490,12 +609,26 @@ export interface SessionSummary {
   automated?: true;
   /** The distinct reasons behind the automated or suspected page views, strongest first. */
   automationReasons?: AutomationReason[];
+  /** True when any page view of the visit is internal (made by the site's team). */
+  internal?: true;
+  /** The goals the visit converted, in goal order, under the goal definitions in force when each page view was recorded. Absent when none. */
+  goals?: { goalId: string; name: string }[];
+  /**
+   * Where the visit went when it left through a link: a same-site path, or another site's origin only, never a query or
+   * fragment. Set only when the last page view ended with a click on a link that left the page and no later page view followed.
+   */
+  exitTo?: string;
   /**
    * One or two sentences describing the visit, built from the fields above and the first page view's
    * browser and operating system. Counts are per click, so "pile-up clicks" are the rapid clicks
    * themselves. `GET /sessions/:sessionId/narrative` has the step-by-step account.
    */
   summary: string;
+  /**
+   * The element with the most snag clicks in this visit and which snag kind it had most, from the visit's own clicks. The
+   * summary ends with it. Absent when the visit had none, and for visits recorded before this was kept.
+   */
+  topSnag?: TopSnag;
 }
 /**
  * GET /v1/projects/:projectId/sessions?cursor=&limit=&path=&group=&locale=&variant=&deviceClass=&minDurationMs=&signal=&controlled=
@@ -506,7 +639,9 @@ export interface SessionPage { sessions: SessionSummary[]; nextCursor?: string; 
 /** GET /v1/projects/:projectId/sessions/:sessionId, segments ordered by pageIndex, then startedAt. */
 export interface SessionDetail { sessionId: string; segments: RecordingSummary[]; }
 /** GET /v1/projects/:projectId/recordings/:id */
-export interface RecordingDetail { recording: Recording; events: Batch['events']; }
+export interface RecordingDetail { recording: Recording; events: Batch['events'];
+  /** JavaScript errors of the page view in time order, when the site records them and the page view had any. */
+  errors?: RecordingError[]; }
 /** Segments and clicks for one locale or variant inside a cohort. `(other)` folds in values beyond the first 20. */
 export interface DimensionCount { key: string; segments: number; clicks: number; }
 export const OTHER_DIMENSION = '(other)';
@@ -532,7 +667,15 @@ export interface HeatmapCohortSummary {
 export const cohortGroup = (cohort: Pick<HeatmapCohortSummary, 'group' | 'path'>): string => cohort.group ?? cohort.path;
 /** GET /v1/projects/:projectId/heatmaps */
 export interface HeatmapCohortList { cohorts: HeatmapCohortSummary[]; }
-export interface SelectorClicks { selector: string; /** Most recent readable element label, when the project's policy allows one. */ label?: string; /** The name the team gave this element, when it has one. It wins over `label`. */ name?: string; clicks: number; rageClicks: number; deadClicks: number; errorClicks: number; }
+export interface SelectorClicks { selector: string; /** Most recent readable element label, when the project's policy allows one. */ label?: string; /** Source file and line (`src/Pricing.tsx:42`) from the most recent click on this element in this cohort, when the site's build plugin stamped it. */ source?: string; /** The name the team gave this element, when it has one. It wins over `label`. */ name?: string;
+  /** Short context from the most recent click on this element in this cohort: tag, region and, under full and balanced, the nearest heading and its own text. */
+  context?: ElementContext;
+  /** False when the element is not a link, button or other control (a pile-up here is on something that is not interactive). Absent when it is, or when the tracker did not say. */
+  interactive?: false;
+  clicks: number; rageClicks: number; deadClicks: number; errorClicks: number;
+  /** JavaScript errors that followed clicks on this element within two seconds, most often first. Present only when the site records errors and some did. */
+  followedBy?: LinkedError[];
+}
 /** GET /v1/projects/:projectId/heatmaps/:key (key URL-encoded) */
 export interface HeatmapAggregate extends HeatmapCohortSummary {
   /** Click density in document CSS pixels; each cell is [column, row, count]. */
@@ -602,6 +745,14 @@ export interface TrafficSummary {
    */
   countries: CountryTrafficCount[]; channels: TrafficCount[]; adNetworks: TrafficCount[]; inApps: TrafficCount[]; entryPages: TrafficCount[];
   /**
+   * Visits in the range that carry no value for a source, so each list plus its gap adds up to `sessions`: days before
+   * channels, countries and entry pages were counted, and visits that did not begin on their first page view. Site-wide
+   * traffic only. A visit with a country that could not be resolved is counted under `unknown`, not here.
+   */
+  notRecorded?: { countries: number; channels: number; entryPages: number };
+  /** The first UTC day channels, countries and entry pages are counted (`YYYY-MM-DD`), set when the range starts before it and has visits that lack them. */
+  sourcesCountedFrom?: string;
+  /**
    * Set when the request named a page group (`?group=`). Then `sessions` counts sessions that viewed the group
    * (a session that viewed two groups is in both), `deviceClasses`, `languages` and `variants` come from the page
    * stats, and the referrer, campaign, browser, operating system, visitor and source lists are empty because those are
@@ -614,15 +765,22 @@ export interface TrafficSummary {
 export const projectUpdateSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   origins: z.array(z.string().url()).min(1).max(20).optional(),
+  /** Owner only. An empty list removes them. See preview-origins.ts for the accepted patterns. */
+  previewOrigins: z.array(z.string().max(300)).max(PREVIEW_ORIGIN_LIMIT).optional(),
   privacy: privacyPolicySchema.optional(),
   consent: consentModeSchema.optional(),
   consentRegions: consentRegionsSchema.optional(),
   sampleRate: z.number().min(0).max(1).optional(),
   targeting: pageTargetingSchema.optional(),
+  /** Owner only. An empty list removes them. */
+  pathPresets: pathPresetsSchema.optional(),
   pageGroups: pageGroupsSchema.optional(),
   grouping: groupingOptionsSchema.optional(),
   retentionDays: z.number().int().min(1).max(90).optional(),
   ai: aiSettingsSchema.optional(),
+  /** Owner only. Turning both ways off removes the setting. */
+  internalTraffic: internalTrafficSchema.optional(),
+  errorCapture: z.boolean().optional(),
 });
 export type ProjectUpdate = z.infer<typeof projectUpdateSchema>;
 
@@ -728,8 +886,10 @@ export * from './agent';
 export * from './narrative';
 export * from './touch';
 export * from './teams';
+export * from './settings-change';
 export * from './oauth';
 export * from './issues';
+export * from './issue-similarity';
 export * from './annotations';
 export * from './sharing';
 
@@ -752,6 +912,8 @@ export interface InstallSharePage {
 }
 export * from './replay-assets';
 export * from './install-guides';
+export * from './preview-origins';
 export * from './billing';
 export * from './github';
 export * from './onboarding';
+export * from './source-location';

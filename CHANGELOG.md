@@ -2,11 +2,29 @@
 
 All notable changes to `@hootlens/mcp` are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - Prepared 2026-10-12
+
+Publication is pending. This entry describes the reviewed source, not a published npm artifact.
+
+### Added
+
+- Authenticated `create_site` uses an explicitly approved OAuth `sites:create` permission, available account site slots, and a required retry key. It starts with balanced or strict privacy and required consent. Account owners can authorize their first site even when their account has no sites yet. Personal access tokens and project-pinned or demo connections cannot create sites.
+- `sites` toolset and explicit `login --scopes read,replay,sites:create` opt-in. A creation response returns installation guidance and distinguishes a created site from verified capture. Identical retries recover the site for 24 hours; later recovery must check existing sites first.
+
+- MCP Apps: in a host that renders them (such as Claude), `get_session_narrative` shows an interactive replay (play, pause, speed, snag and error markers, the steps of the visit that jump to their moment), `get_heatmap` shows click density over the page with the most clicked elements and scroll reach, and `review_findings` shows the pages with the most snags as cards. They are served as `ui://hootlens/replay`, `ui://hootlens/heatmap` and `ui://hootlens/findings`. Other hosts get the same text and data as before. The replay views load their events through `load_replay` (replay scope), a tool marked for views only, so the model's tool results do not grow.
+- `list_errors` and `get_error` (read scope): JavaScript errors grouped by fingerprint, with where each was thrown (the original file and line when the release's source maps were uploaded), the elements whose click it followed, the releases, page groups and device classes it appeared in, and example recordings with the replay scope. `get_session_narrative` says "followed by TypeError: ..." for a snag an error followed, and `review_findings` lists `followedBy` on those elements.
+
+### Changed
+
+- Tool and parameter descriptions now state only what each tool does, takes and returns, as the Claude Connectors Directory requires. Guidance on workflow, citing ids, saying "rose" or "fell" and treating recorded content as untrusted moved into the server `instructions`. Tool names, parameters, annotations and response shapes are unchanged.
+- The tools offered follow the scopes the person behind the connection still holds on their sites (`GET /v1/access`), so a tool leaves the list within seconds of its permission being taken away. `get_session_narrative` keeps needing only the read scope, and is offered when the person behind the connection may watch replays on a site it reaches; for a person who may not, the API answers 403 `replay_required`.
+- `list_projects` and `whoami` can report a site role of `custom`: a member's access on a site can now be an individual set of permissions rather than Viewer or Editor.
+
 ## [1.0.2] - 2026-10-10
 
 ### Changed
 
-- The npm page no longer links to the private GitHub repository, which returned a 404. `repository` and `bugs` point at the public [Parallel-Platforms/hootlens-mcp](https://github.com/Parallel-Platforms/hootlens-mcp) repository and support@hootlens.com, and `homepage` at the docs on hootlens.com. Released from 1.0.1 with only these package links changed.
+- The npm page no longer links to the private GitHub repository, which returned a 404. `repository` and `bugs` point at the public [Parallel-Platforms/hootlens-mcp](https://github.com/Parallel-Platforms/hootlens-mcp) repository and support@hootlens.com, and `homepage` at the docs on hootlens.com. Released from 1.0.1 with only these package links changed; the changes listed under Unreleased are not in it.
 
 ## [1.0.1] - 2026-10-07
 
@@ -28,7 +46,7 @@ First release on npm. The same server was available before as a single-file down
 - Prompts for common jobs and resources for the Hoot Lens documentation.
 - Structured output for tool results, alongside the text content.
 - `hootlens-mcp login`, `logout` and `whoami`: sign in with your browser (OAuth with PKCE) instead of creating an access key. The sign-in is stored in the macOS Keychain, the Linux Secret Service, or a private file, and renews itself.
-- Packaging as an npm package with a `hootlens-mcp` command, no runtime dependencies, and npm provenance.
+- Packaging as an npm package with a `hootlens-mcp` command, and no runtime dependencies. Historical packages did not carry npm provenance.
 
 ### Changed
 

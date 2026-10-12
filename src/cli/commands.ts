@@ -26,10 +26,11 @@ export interface CliIo {
 }
 
 const HELP: Record<Command, string> = {
-  login: `Usage: hootlens-mcp login [--scopes read,replay,annotate]
+  login: `Usage: hootlens-mcp login [--scopes read,replay,annotate,configure,sites:create]
 
 Signs in through your browser and saves the sign-in (macOS Keychain, Linux Secret Service, or a private file in your config directory).
 The default scopes are ${DEFAULT_LOGIN_SCOPES.join(', ')}. You choose the projects to share in the browser.
+To create sites, opt in with --scopes read,replay,annotate,sites:create and explicitly approve site creation for all sites in the browser. It is never included in the default scopes.
 HOOTLENS_API_URL selects the API. HOOTLENS_PAT, when set, overrides the saved sign-in at run time.
 `,
   logout: `Usage: hootlens-mcp logout

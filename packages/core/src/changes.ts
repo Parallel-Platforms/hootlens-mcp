@@ -27,6 +27,15 @@ export const changeCreatedBySchema = z.enum(['owner', 'agent']);
 export type ChangeCreatedBy = z.infer<typeof changeCreatedBySchema>;
 
 /**
+ * What a change did. `standard` (the default, and what an absent kind means) changed what visitors see or do.
+ * `measurement` changed only how Hoot Lens counts, such as adding `data-hoot-id` to existing links: a jump in a goal or
+ * count after it reflects new counting, not a change in visitor behavior, so the impact report gives no verdict for it.
+ */
+export const CHANGE_KINDS = ['standard', 'measurement'] as const;
+export const changeKindSchema = z.enum(CHANGE_KINDS);
+export type ChangeKind = z.infer<typeof changeKindSchema>;
+
+/**
  * One logged change. `createdBy` is `owner` for a signed-in owner and `agent` for an access token or an
  * automatic detection (`source` then starts with `auto:`). `release` holds the page version label the change
  * was seen under when it is detected automatically, or the site release the agent gave.
@@ -43,6 +52,8 @@ export interface ChangeMarker {
   release?: string;
   createdBy: ChangeCreatedBy;
   source?: string;
+  /** Absent means standard. See CHANGE_KINDS. */
+  kind?: ChangeKind;
   /** The commit a deploy shipped, when a deploy hook or the GitHub Action logged the change. No author is ever stored. */
   commit?: { sha: string; url?: string };
 }
@@ -57,6 +68,8 @@ export const changeInputSchema = z.object({
   at: z.number().int().positive().optional(),
   /** Free text such as `claude-code` or `deploy-script`. */
   source: z.string().trim().min(1).max(CHANGE_SOURCE_MAX).optional(),
+  /** `measurement` for a change that only changes counting (see CHANGE_KINDS). Absent means standard. */
+  kind: changeKindSchema.optional(),
   /** The commit the change shipped: a hex sha and, optionally, an https link. Never an author. */
   commit: z.object({
     sha: z.string().trim().regex(/^[0-9a-fA-F]{7,64}$/),
@@ -64,6 +77,9 @@ export const changeInputSchema = z.object({
   }).optional(),
 });
 export type ChangeInput = z.infer<typeof changeInputSchema>;
+
+/** True for a change that only changed how Hoot Lens counts, so no before and after verdict is given for it. */
+export const isMeasurementChange = (marker: Pick<ChangeMarker, 'kind'>): boolean => marker.kind === 'measurement';
 
 /** A marker's `source` when a deploy hook logged it: `deploy:netlify`, `deploy:vercel`, `deploy:generic` or `deploy:github-action`. */
 export const DEPLOY_SOURCE_PREFIX = 'deploy:';

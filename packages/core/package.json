@@ -6,11 +6,17 @@
   "exports": {
     ".": "./src/index.ts",
     "./targeting": "./src/targeting.ts",
+    "./path-privacy": "./src/path-privacy.ts",
     "./sources": "./src/sources.ts",
+    "./internal-traffic": "./src/internal-traffic.ts",
+    "./error-capture": "./src/error-capture.ts",
     "./automation": "./src/automation.ts",
     "./page-groups": "./src/page-groups.ts",
     "./version-labels": "./src/version-labels.ts",
-    "./install-guides": "./src/install-guides.ts"
+    "./install-guides": "./src/install-guides.ts",
+    "./source-location": "./src/source-location.ts",
+    "./replay-fit": "./src/replay-fit.ts",
+    "./replay-assets": "./src/replay-assets.ts"
   },
   "dependencies": {
     "zod": "^4.1.12"

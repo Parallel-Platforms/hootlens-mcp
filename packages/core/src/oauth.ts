@@ -5,10 +5,10 @@
  * or revoking the grant cuts access at once. Only hashes of codes and tokens are stored.
  */
 import { z } from 'zod';
-import type { ProjectRole, TokenScope } from './index';
+import type { ProjectRole } from './index';
 
 /** Scopes a client may ask for. `triage` is offered only to staff, who must tick it on the consent page. */
-export const OAUTH_SCOPES = ['read', 'replay', 'annotate', 'triage'] as const;
+export const OAUTH_SCOPES = ['read', 'replay', 'annotate', 'configure', 'sites:create', 'triage'] as const;
 export type OAuthScope = (typeof OAUTH_SCOPES)[number];
 /** Granted when a client asks for nothing (or only scopes Hoot Lens does not know). */
 export const OAUTH_DEFAULT_SCOPES: readonly OAuthScope[] = ['read', 'replay'];
@@ -43,6 +43,8 @@ export const OAUTH_SCOPE_INFO: Record<OAuthScope, { label: string; description: 
   read: { label: 'Read analytics', description: 'See projects, recordings, heatmaps, traffic, findings, goals and changes.', required: true },
   replay: { label: 'Open replays', description: 'Read the recorded events of a visit, such as the story of a session.', required: false },
   annotate: { label: 'Log changes and notes', description: 'Log change markers and add notes on recordings, shown as made by an agent. It cannot change settings or delete recordings.', required: false },
+  configure: { label: 'Change site settings', description: 'Preview and apply changes to which pages are recorded, goals, funnels and stricter privacy. Only works on sites you own (goals and funnels for editors). It can never weaken privacy, and every change is logged as made by an agent.', required: false },
+  'sites:create': { label: 'Add sites to my account', description: 'Use available site slots to add websites with masked form values and required consent. Requires access to all your current and future sites. Cannot upgrade your plan or weaken privacy.', required: false },
   triage: { label: 'Work the issues queue (staff only)', description: 'Triage feedback issues as Hoot Lens staff. Grants no access to any project.', required: false },
 };
 
@@ -208,10 +210,14 @@ export const oauthRegistrationSchema = z.object({
   application_type: z.enum(['web', 'native']).optional(),
 }).loose();
 
-/** The problem with the grant and response types an app declares (registration or metadata document), or undefined. Only the authorization code flow with refresh tokens exists. */
+/**
+ * The problem with the grant and response types an app declares (registration or metadata document), or undefined. Only
+ * the authorization code flow with refresh tokens exists, so an app must offer authorization_code. Other grant types it
+ * lists (Claude lists jwt-bearer, which it uses with other servers) are ignored: the token endpoint answers
+ * unsupported_grant_type to anything but authorization_code and refresh_token, so listing one grants nothing.
+ */
 export function grantMetadataProblem(grantTypes: readonly string[] | undefined, responseTypes: readonly string[] | undefined): string | undefined {
   if (grantTypes && !grantTypes.includes('authorization_code')) return 'grant_types must include authorization_code';
-  if (grantTypes?.some(type => type !== 'authorization_code' && type !== 'refresh_token')) return 'Only the authorization_code and refresh_token grant types are supported';
   if (responseTypes && !responseTypes.includes('code')) return 'response_types must include code';
   return undefined;
 }
@@ -248,7 +254,7 @@ export const PKCE_VERIFIER = /^[A-Za-z0-9\-._~]{43,128}$/;
 export const PKCE_CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
 
 /** The scopes of a grant as the token scopes the rest of the API understands. */
-export const grantTokenScopes = (scopes: readonly OAuthScope[]): TokenScope[] => [...scopes];
+export const grantTokenScopes = (scopes: readonly OAuthScope[]): OAuthScope[] => [...scopes];
 
 /**
  * Client IDs of Hoot Lens' own apps. Their metadata documents are served from hootlens.com, so the name and the

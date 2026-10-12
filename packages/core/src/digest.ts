@@ -32,6 +32,14 @@ export const DIGEST_NO_DATA_DAYS = 28;
  * note this drives goes quiet on its own about two weeks later.
  */
 export const ELEMENT_SNAG_COUNTERS_FROM = '2026-10-06';
+/**
+ * The first UTC day the hosted service counted visits by channel, country, ad network, in-app browser and entry page
+ * (commit 3fa79bb). Visits were counted per day before that, by referrer and device, so a window that starts earlier
+ * has visits but no channel or country for the days before this one. Those visits are reported as "not recorded", with
+ * this date, instead of leaving the channels and countries to add up to less than the visit count. Per day counters
+ * for hours and automated visits began on 2026-10-05; no digest figure depends on them being complete.
+ */
+export const SOURCE_COUNTERS_FROM = '2026-10-07';
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 const utcDay = (time: number) => new Date(time).toISOString().slice(0, 10);
@@ -205,12 +213,34 @@ export interface DigestFunnel {
   text: string;
 }
 
+/**
+ * How a week's visits divide for one source. `shown + other + notRecorded` (plus `unresolved` for countries) always
+ * equals `visits`, so the lists add up to the visit count.
+ */
+export interface DigestSourceTotals {
+  /** Visits in the window. */
+  visits: number;
+  /** Visits in the rows listed. */
+  shown: number;
+  /** Visits in smaller entries that are not listed. */
+  other: number;
+  /** Countries only: visits counted with no country resolved from the request. */
+  unresolved?: number;
+  /** Visits on days before this was counted, or that carry no value for it. */
+  notRecorded: number;
+}
+
 /** The week's largest channels and countries, as shares of its visits. */
 export interface DigestSources {
   channels: ShareRow[]; countries: ShareRow[];
   /** Share of visits whose country was not resolved, when large enough to matter. */
   unknownCountryShare?: number;
-  /** One factual sentence, or empty when the counters held nothing. */
+  /** What the listed rows leave out, so channels and countries each add up to the visit count. */
+  channelTotals: DigestSourceTotals;
+  countryTotals: DigestSourceTotals;
+  /** The first UTC day channels and countries are counted (`YYYY-MM-DD`), set when the window holds visits from before it. */
+  countedFrom?: string;
+  /** One factual sentence, or empty when the window held no visits. */
   text: string;
 }
 
@@ -307,6 +337,8 @@ export interface DigestInput {
   elementNames?: ReadonlyMap<string, string>;
   /** The first UTC day with element snag counters. Defaults to ELEMENT_SNAG_COUNTERS_FROM; tests and other deployments set their own. */
   elementCountersFrom?: string;
+  /** The first UTC day with channel and country counters. Defaults to SOURCE_COUNTERS_FROM; tests set their own. */
+  sourceCountersFrom?: string;
   /** Example recordings by element id, already limited to this week and to what the reader may open. */
   examples?: Readonly<Record<string, readonly DigestExample[]>>;
   changes: readonly ChangeMarker[];
@@ -352,20 +384,57 @@ const sumMaps = (days: readonly string[], perDay: ReadonlyMap<string, DayCounts>
   return total;
 };
 
-/** The week's top channels and countries. Shares are of the week's visits, so a visit with no channel or country counts in neither. */
-export function digestSources(days: readonly string[], perDay: ReadonlyMap<string, DayCounts>, visits: number): DigestSources {
+const sumMap = (map: Record<string, number> | undefined, skip?: string): number =>
+  Object.entries(map ?? {}).reduce((sum, [key, value]) => sum + (key === skip || !(value > 0) ? 0 : value), 0);
+const dayText = (day: string) => new Date(Date.parse(day)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+
+/**
+ * The week's top channels and countries. Shares are of the week's visits. A visit with no channel or country counted
+ * (a day before they were counted, or a visit that did not begin on its first page view) is reported as "not
+ * recorded", with the date counting began, so the listed rows, the rest and the gap add up to the visit count.
+ */
+export function digestSources(days: readonly string[], perDay: ReadonlyMap<string, DayCounts>, visits: number, countedFromDay: string = SOURCE_COUNTERS_FROM): DigestSources {
   const channelCounts = sumMaps(days, perDay, 'channels');
   const countryCounts = sumMaps(days, perDay, 'countries');
   const channels = topShares(channelCounts, visits, key => (isChannel(key) ? CHANNEL_LABELS[key] : key));
   const countries = topShares(countryCounts, visits, key => countryName(key), 3, ['unknown']);
-  const unknown = visits > 0 ? (countryCounts.unknown ?? 0) / visits : 0;
+  const unresolved = countryCounts.unknown ?? 0;
+  const unknown = visits > 0 ? unresolved / visits : 0;
+  // Gaps are per day: a day's visits minus what that day's counters hold, never below zero.
+  let channelGap = 0;
+  let countryGap = 0;
+  let early = false;
+  for (const day of days) {
+    const counts = perDay.get(day);
+    const sessions = counts?.sessions ?? 0;
+    if (sessions <= 0) continue;
+    channelGap += Math.max(0, sessions - sumMap(counts?.channels));
+    countryGap += Math.max(0, sessions - sumMap(counts?.countries));
+    if (day < countedFromDay) early = true;
+  }
+  const shownChannels = channels.reduce((sum, row) => sum + row.count, 0);
+  const shownCountries = countries.reduce((sum, row) => sum + row.count, 0);
+  const channelTotals: DigestSourceTotals = { visits, shown: shownChannels, other: Math.max(0, visits - channelGap - shownChannels), notRecorded: channelGap };
+  const countryTotals: DigestSourceTotals = { visits, shown: shownCountries, other: Math.max(0, visits - countryGap - unresolved - shownCountries), unresolved, notRecorded: countryGap };
   const list = (rows: ShareRow[]) => rows.map(row => `${row.label} ${percentText(row.share)} (${plural(row.count, 'visit')})`).join(', ');
-  const parts = [
+  const since = early ? ` Channels and countries are counted from ${dayText(countedFromDay)}; earlier days have none.` : '';
+  const gap = (label: string, count: number) => `${plural(count, 'visit')} (${percentText(count / visits)}) had no ${label} recorded.`;
+  const gaps = channelGap > 0 && channelGap === countryGap
+    ? [`${plural(channelGap, 'visit')} (${percentText(channelGap / visits)}) had no channel or country recorded.`]
+    : [channelGap > 0 ? gap('channel', channelGap) : '', countryGap > 0 ? gap('country', countryGap) : ''];
+  const parts = visits > 0 ? [
     channels.length ? `Top channels: ${list(channels)}.` : '',
+    channelTotals.other > 0 ? `Other channels: ${plural(channelTotals.other, 'visit')}.` : '',
     countries.length ? `Top countries: ${list(countries)}.` : '',
-    countries.length && unknown >= 0.1 ? `${percentText(unknown)} of visits had no country resolved.` : '',
-  ].filter(Boolean);
-  return { channels, countries, ...(countries.length && unknown >= 0.1 ? { unknownCountryShare: unknown } : {}), text: parts.join(' ') };
+    countryTotals.other > 0 ? `Other countries: ${plural(countryTotals.other, 'visit')}.` : '',
+    unresolved > 0 && unknown >= 0.1 ? `${percentText(unknown)} of visits had no country resolved.` : '',
+    ...gaps,
+  ].filter(Boolean) : [];
+  const text = parts.length ? `${parts.join(' ')}${since}` : '';
+  return {
+    channels, countries, ...(countries.length && unknown >= 0.1 ? { unknownCountryShare: unknown } : {}),
+    channelTotals, countryTotals, ...(early ? { countedFrom: countedFromDay } : {}), text,
+  };
 }
 
 /** Builds the digest from counts already read. Pure. */
@@ -497,7 +566,7 @@ export function buildWeeklyDigest(input: DigestInput): WeeklyDigest {
     period: { from: period.current.from, to: period.current.to, weekEnding: period.weekEnding, label: period.label, previousFrom: period.previous.from, previousTo: period.previous.to, includesToday: period.includesToday },
     privacy: project.preset, noData: visits === 0, visits: visitsOut,
     snags: { elements, totalThisWeek, totalLastWeek, text: snagText, ...(notCounted ? { countedFrom: countersFrom } : {}) },
-    sources: visits > 0 ? digestSources(period.current.days, perDay, visits) : { channels: [], countries: [], text: '' }, goals, changes: { logged, verdicts: [...input.verdicts], ...(input.verdicts.length ? { verdictNote: VERDICT_CAVEAT } : {}) }, funnels, watch,
+    sources: visits > 0 ? digestSources(period.current.days, perDay, visits, input.sourceCountersFrom) : { channels: [], countries: [], channelTotals: { visits: 0, shown: 0, other: 0, notRecorded: 0 }, countryTotals: { visits: 0, shown: 0, other: 0, unresolved: 0, notRecorded: 0 }, text: '' }, goals, changes: { logged, verdicts: [...input.verdicts], ...(input.verdicts.length ? { verdictNote: VERDICT_CAVEAT } : {}) }, funnels, watch,
     notes: [...DIGEST_NOTES],
   };
 }

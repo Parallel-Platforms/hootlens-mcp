@@ -1,6 +1,6 @@
 # Public release preparation
 
-This pipeline is prepared for independent review. No new npm version or trusted-publisher configuration was created as part of this change. Version 1.0.2 is already published without npm provenance and cannot be republished. Public source hashes and GitHub validation runs do not add an attestation to that existing package.
+This pipeline and the 1.1.0 source import are prepared for independent review. No new npm version or trusted-publisher configuration was created as part of this change. Version 1.0.2 is already published without npm provenance and cannot be republished. Public source hashes and GitHub validation runs do not add an attestation to that existing package.
 
 The development root remains `private: true`. `npm run release:prepare` verifies the imported source snapshot, complete source inventory, package lock, registry identity and compiled version. It builds from this public checkout and stages only `dist/cli.mjs`, `package.json`, `README.md`, `LICENSE` and `CHANGELOG.md` under `.release/package`. An explicit manifest allowlist excludes development dependencies, workspaces and lifecycle scripts. The staged manifest retains `@hootlens/mcp`, `com.hootlens/mcp`, the public repository URL, the executable name and Node 20 requirement, and requires public access and provenance.
 

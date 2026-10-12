@@ -5,5 +5,5 @@
 export { createHootLensServer, MCP_SERVER_INFO, type ServerConfig } from './server.js';
 export { Api, type ApiFetch, type ApiResponse, type Surface } from './api.js';
 export { ToolError, type ToolErrorCode } from './errors.js';
-export { TOOLSETS, enabledToolsets, parseToolsets, unknownToolsetsMessage, unavailableToolsets, type Toolset } from './toolsets.js';
+export { TOOLSETS, enabledToolsets, narrativeHidden, parseToolsets, unknownToolsetsMessage, unavailableToolsets, type Toolset } from './toolsets.js';
 export { MCP_PACKAGE_VERSION } from './version.js';

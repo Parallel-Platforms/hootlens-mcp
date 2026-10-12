@@ -18,8 +18,8 @@ test('the release sources match the recorded snapshot, including shared imports'
   const source = JSON.parse(await readFile(new URL('../docs/SOURCE.json', import.meta.url), 'utf8'));
   const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   const server = JSON.parse(await readFile(new URL('../server.json', import.meta.url), 'utf8'));
-  assert.equal(source.version, '1.0.2');
-  assert.equal(source.sourceCommit, '3431912d0c5c39f6eaa6f0f314627a9957a34c13');
+  assert.equal(source.version, '1.1.0');
+  assert.equal(source.sourceCommit, '683b3ac9294e9db795607470dc632c13f79d68b8');
   assert.equal(manifest.version, source.version);
   assert.equal(server.version, source.version);
   assert.equal(server.packages[0].version, source.version);
@@ -46,9 +46,9 @@ test('the release sources match the recorded snapshot, including shared imports'
   }
 });
 
-test('the standalone bundle reports the published version and CLI usage', async () => {
+test('the standalone bundle reports the prepared version and CLI usage', async () => {
   const version = await run(process.execPath, [cli, '--version'], { cwd: root, env: cleanEnv, timeout: 10_000 });
-  assert.equal(version.stdout.trim(), '1.0.2');
+  assert.equal(version.stdout.trim(), '1.1.0');
   assert.equal(version.stderr, '');
   const help = await run(process.execPath, [cli, '--help'], { cwd: root, env: cleanEnv, timeout: 10_000 });
   assert.match(help.stdout, /login\|logout\|whoami/);
@@ -82,7 +82,7 @@ test('the built stdio server discovers read tools, defaults to a pinned project 
   const client = new Client({ name: 'public-source-fixture', version: '1.0.0' });
   try {
     await client.connect(transport, { timeout: 10_000 });
-    assert.equal(client.getServerVersion()?.version, '1.0.2');
+    assert.equal(client.getServerVersion()?.version, '1.1.0');
     const tools = await client.listTools({ cursor: '' }, { timeout: 5_000 });
     assert.ok(tools.tools.some(tool => tool.name === 'list_recordings'));
     assert.ok(!tools.tools.some(tool => ['add_note', 'log_change', 'configure', 'submit_issue'].includes(tool.name)));
