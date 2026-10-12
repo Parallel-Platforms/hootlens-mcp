@@ -46,6 +46,65 @@ test('the release sources match the recorded snapshot, including shared imports'
   }
 });
 
+test('the compiled server gates account setup and preserves its retry and consent contract', { timeout: 30_000 }, async () => {
+  let mode = 'oauth';
+  const creates = [];
+  const api = createServer(async (request, response) => {
+    response.setHeader('Content-Type', 'application/json');
+    if (request.url === '/v1/access') {
+      if (mode === 'unknown') return response.writeHead(403).end('{}');
+      return response.end(JSON.stringify({ account: { id: 'synthetic-owner' }, credential: {
+        kind: mode, projects: 'all', scopes: mode === 'oauth' ? ['read', 'sites:create'] : ['read'],
+      }, projects: [] }));
+    }
+    if (request.url === '/v1/projects' && request.method === 'POST') {
+      let raw = '';
+      for await (const chunk of request) raw += chunk;
+      creates.push({ body: JSON.parse(raw), key: request.headers['idempotency-key'] });
+      return response.writeHead(201).end(JSON.stringify({ project: { id: 'proj_created', name: 'Synthetic site' } }));
+    }
+    if (request.url?.startsWith('/v1/projects/proj_created/install-snippet')) return response.end(JSON.stringify({ tag: '<script data-project="proj_created"></script>', consent: 'required' }));
+    response.writeHead(404).end('{}');
+  });
+  await new Promise(resolve => api.listen(0, '127.0.0.1', resolve));
+  const address = api.address();
+  assert.ok(address && typeof address === 'object');
+  async function connection(args, inspect) {
+    // The fixture API supplies authority; this synthetic bearer is never sent to a real service.
+    const transport = new StdioClientTransport({ command: process.execPath, args: [cli, ...args], cwd: root,
+      env: { ...cleanEnv, HOOTLENS_PAT: 'synthetic_compiled_setup_fixture', HOOTLENS_API_URL: `http://127.0.0.1:${address.port}` }, stderr: 'pipe' });
+    const client = new Client({ name: 'compiled-setup-fixture', version: '1.0.0' });
+    try {
+      await client.connect(transport, { timeout: 5_000 });
+      const tools = await client.listTools({ cursor: '' }, { timeout: 5_000 });
+      await inspect(client, tools.tools);
+    } finally { await client.close(); }
+  }
+  try {
+    await connection(['--toolsets', 'sites'], async (client, tools) => {
+      assert.ok(tools.some(tool => tool.name === 'create_site'));
+      const result = await client.callTool({ name: 'create_site', arguments: {
+        name: 'Synthetic site', origins: ['https://synthetic.example'], idempotencyKey: 'compiled-setup-request',
+      } }, undefined, { timeout: 5_000 });
+      assert.ok(!result.isError);
+      assert.deepEqual(creates, [{ key: 'compiled-setup-request', body: { name: 'Synthetic site', origins: ['https://synthetic.example'], privacy: { preset: 'balanced' }, consent: 'required' } }]);
+      assert.equal(result.structuredContent.setupStatus.site, 'created');
+      assert.equal(result.structuredContent.setupStatus.recording, 'not_checked');
+      assert.ok(result.structuredContent.next.some(step => step.includes('read and install toolsets')));
+    });
+    const absent = async (_client, tools) => assert.ok(!tools.some(tool => tool.name === 'create_site'));
+    await connection(['--project', 'proj_existing', '--toolsets', 'all'], absent);
+    mode = 'pat';
+    await connection(['--toolsets', 'all'], absent);
+    mode = 'unknown';
+    await connection(['--toolsets', 'all'], absent);
+    assert.equal(creates.length, 1, 'negative connections never submit site creation');
+  } finally {
+    api.closeAllConnections();
+    await new Promise(resolve => api.close(resolve));
+  }
+});
+
 test('the standalone bundle reports the prepared version and CLI usage', async () => {
   const version = await run(process.execPath, [cli, '--version'], { cwd: root, env: cleanEnv, timeout: 10_000 });
   assert.equal(version.stdout.trim(), '1.1.0');
