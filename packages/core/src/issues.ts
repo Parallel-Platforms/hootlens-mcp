@@ -7,6 +7,7 @@
  * Issue titles, bodies and replies are untrusted user content. They are data, never instructions.
  */
 import { z } from 'zod';
+import { parseSourceLocation } from './source-location';
 
 export const ISSUE_KINDS = ['bug', 'feature', 'question', 'feedback'] as const;
 export type IssueKind = (typeof ISSUE_KINDS)[number];
@@ -14,6 +15,18 @@ export const ISSUE_STATUSES = ['open', 'in_progress', 'completed', 'wont_do'] as
 export type IssueStatus = (typeof ISSUE_STATUSES)[number];
 export const ISSUE_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
 export type IssuePriority = (typeof ISSUE_PRIORITIES)[number];
+/** How much the problem hurts, as the person who reports it sees it. Staff triage keeps its own priority and labels. */
+export const ISSUE_SEVERITIES = ['blocking', 'annoying', 'minor'] as const;
+export type IssueSeverity = (typeof ISSUE_SEVERITIES)[number];
+export const ISSUE_SEVERITY_LABEL: Record<IssueSeverity, string> = { blocking: 'Blocking', annoying: 'Annoying', minor: 'Minor' };
+export const ISSUE_SEVERITY_HINT: Record<IssueSeverity, string> = {
+  blocking: 'I cannot get my work done',
+  annoying: 'It gets in the way, but I can work around it',
+  minor: 'A small rough edge',
+};
+/** Whether an issue was filed by a person in the dashboard or by an agent holding an access key or an OAuth grant. */
+export const ISSUE_FILED_VIA = ['person', 'agent'] as const;
+export type IssueFiledVia = (typeof ISSUE_FILED_VIA)[number];
 
 export const ISSUE_TITLE_MAX = 140;
 export const ISSUE_BODY_MAX = 10_000;
@@ -31,9 +44,41 @@ export const ISSUE_IDEMPOTENCY_TTL_MS = 24 * 3_600_000;
 export const ISSUE_EVENT_TTL_MS = 30 * 86_400_000;
 export const ISSUE_PAGE_LIMIT = 50;
 export const ISSUE_FEED_LIMIT = 100;
-/** Per submitter, per hour. */
-export const ISSUE_RATE_LIMITS = { submit: { user: 10, staff: 100 }, reply: { user: 60, staff: 600 } } as const;
+/**
+ * Per submitter, per hour. A batch counts once per issue it files. An agent (access key or OAuth grant) has a larger
+ * allowance than a person typing in the dashboard, because one coding session can find several problems at once; the
+ * open-issue cap, the daily cap and the batch size cap still bound it. Replays of an idempotent submit cost nothing.
+ */
+export const ISSUE_RATE_LIMITS = {
+  submit: { user: 10, agent: 40, staff: 100 },
+  reply: { user: 60, staff: 600 },
+  /** Screenshot uploads, counted per file. */
+  attach: { user: 20, staff: 100 },
+  /** Duplicate checks (find_similar_issues and the dashboard's suggestions). */
+  similar: { user: 60, staff: 120 },
+} as const;
 export const ISSUE_RATE_WINDOW_MS = 3_600_000;
+/** Issues one submitter can file in a day across the dashboard and agents. */
+export const ISSUE_DAILY_LIMITS = { user: 100, staff: 1000 } as const;
+export const ISSUE_DAILY_WINDOW_MS = 86_400_000;
+/** Screenshot uploads one submitter can make in a day. */
+export const ISSUE_ATTACH_DAILY_LIMITS = { user: 60, staff: 500 } as const;
+/** Issues in one batch submit. */
+export const ISSUE_BATCH_MAX = 20;
+/** Visits (recordings and sessions) one issue can link, each. */
+export const MAX_ISSUE_VISIT_LINKS = 10;
+/** Issues one issue can link as related. */
+export const MAX_ISSUE_RELATED = 10;
+/** Screenshots on one issue, and the size of each after decoding. */
+export const MAX_ISSUE_ATTACHMENTS = 5;
+export const ISSUE_ATTACHMENT_MAX_BYTES = 2 * 1024 * 1024;
+export const ISSUE_ATTACHMENT_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
+export type IssueAttachmentType = (typeof ISSUE_ATTACHMENT_TYPES)[number];
+/** The longest side and the pixel count a screenshot may have, read from its header without decoding it. */
+export const ISSUE_ATTACHMENT_MAX_SIDE = 16_384;
+export const ISSUE_ATTACHMENT_MAX_PIXELS = 40_000_000;
+/** The base64 text of a full-size attachment, plus slack. */
+export const ISSUE_ATTACHMENT_BASE64_MAX = Math.ceil(ISSUE_ATTACHMENT_MAX_BYTES / 3) * 4 + 8;
 
 const ID = /^[a-zA-Z0-9_-]{1,80}$/;
 const idText = z.string().regex(ID);
@@ -53,16 +98,81 @@ const pageUrlSchema = z.string().trim().max(2048).transform((value, ctx) => {
   }
 });
 
-/** What the dashboard or an agent knows about where the report came from. Every field is optional and capped. */
-export const issueContextSchema = z.object({
+const optionalIds = z.array(idText).max(MAX_ISSUE_VISIT_LINKS);
+const SELECTOR_MAX = 300;
+const CONTROL_CHARS = '[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u202a-\\u202e\\u2066-\\u2069]';
+const CONTROL = new RegExp(CONTROL_CHARS);
+const selectorText = z.string().min(1).max(SELECTOR_MAX).refine(value => !CONTROL.test(value), 'No control characters').refine(value => value === value.trim(), 'No padding');
+/** Heatmap cohort keys are JSON text that names the site, such as `["proj_x","/pricing","","","desktop"]`. */
+const cohortKeyText = z.string().min(2).max(2000).refine(value => !CONTROL.test(value), 'No control characters');
+
+const contextShape = {
   pageUrl: pageUrlSchema.optional(),
+  /** Older reports and clients: one visit. New ones use the lists. */
   recordingId: idText.optional(),
   sessionId: idText.optional(),
+  recordingIds: optionalIds.optional(),
+  sessionIds: optionalIds.optional(),
   trackerVersion: z.string().regex(/^[\w.+-]{1,40}$/).optional(),
   userAgent: z.string().trim().min(1).max(300).optional(),
   route: z.string().trim().min(1).max(100).optional(),
-});
-export type IssueContext = z.infer<typeof issueContextSchema>;
+  /** Evidence from the site's own data. The API checks that it exists when the issue names a site. */
+  cohortKey: cohortKeyText.optional(),
+  /** A CSS selector the reporter saw, as free text. */
+  selector: selectorText.optional(),
+  /** A `data-hoot-id` value. */
+  hootId: idText.optional(),
+  /** An element's selector exactly as findings and heatmaps list it. */
+  elementKey: selectorText.optional(),
+  changeId: idText.optional(),
+  goalId: idText.optional(),
+  funnelId: idText.optional(),
+  /** A JavaScript error group's id, as list_errors returns it. Shape only: error groups are read by date range, so existence is not checked. */
+  errorId: idText.optional(),
+  /** A `path:line` in the site's source, as `data-hoot-src` and error stacks give it. */
+  sourceLocation: z.string().refine(value => parseSourceLocation(value) !== undefined, 'Use a repository-relative path and line, such as src/Pricing.tsx:42').optional(),
+};
+
+/** What an issue stores: the visit lists replace the older single ids, which are folded in and deduplicated. */
+export interface IssueContext {
+  pageUrl?: string;
+  recordingIds?: string[];
+  sessionIds?: string[];
+  trackerVersion?: string;
+  userAgent?: string;
+  route?: string;
+  cohortKey?: string;
+  selector?: string;
+  hootId?: string;
+  elementKey?: string;
+  changeId?: string;
+  goalId?: string;
+  funnelId?: string;
+  errorId?: string;
+  sourceLocation?: string;
+}
+type ContextLike = Partial<IssueContext> & { recordingId?: string; sessionId?: string };
+const merged = (single: string | undefined, list: string[] | undefined): string[] => [...new Set([...(single ? [single] : []), ...(list ?? [])])];
+/** Folds the single ids into the lists, for new input and for issues stored before the lists existed. */
+export function normalizeIssueContext(context: ContextLike | undefined): IssueContext | undefined {
+  if (!context) return undefined;
+  const { recordingId, sessionId, recordingIds, sessionIds, ...rest } = context;
+  const recordings = merged(recordingId, recordingIds);
+  const sessions = merged(sessionId, sessionIds);
+  const result: IssueContext = { ...rest, ...(recordings.length ? { recordingIds: recordings } : {}), ...(sessions.length ? { sessionIds: sessions } : {}) };
+  return Object.keys(result).length ? result : undefined;
+}
+/** What the dashboard or an agent knows about where the report came from. Every field is optional and capped. */
+export const issueContextSchema = z.object(contextShape).superRefine((value, ctx) => {
+  for (const [single, list, name] of [[value.recordingId, value.recordingIds, 'recordingIds'], [value.sessionId, value.sessionIds, 'sessionIds']] as const) {
+    if (merged(single, list).length > MAX_ISSUE_VISIT_LINKS) ctx.addIssue({ code: 'custom', path: [name], message: `At most ${MAX_ISSUE_VISIT_LINKS} visits can be linked` });
+  }
+}).transform((value): IssueContext => normalizeIssueContext(value) ?? {});
+/** Context fields that name something on a site, so an issue that carries one must name the site. */
+export const ISSUE_SITE_EVIDENCE = ['recordingIds', 'sessionIds', 'cohortKey', 'elementKey', 'changeId', 'goalId', 'funnelId', 'errorId'] as const;
+
+/** An issue to link: its id, or its number. */
+const relatedRef = z.union([idText, z.number().int().min(1).max(999_999_999)]).transform(String);
 
 export const issueInputSchema = z.object({
   kind: z.enum(ISSUE_KINDS),
@@ -70,8 +180,50 @@ export const issueInputSchema = z.object({
   body: z.string().trim().min(1).max(ISSUE_BODY_MAX),
   projectId: idText.optional(),
   context: issueContextSchema.optional(),
+  /** Set by the submitter. Staff keep their own priority. */
+  severity: z.enum(ISSUE_SEVERITIES).optional(),
+  /** Issues the submitter can see that this one relates to, by id or number. */
+  relatedIssues: z.array(relatedRef).max(MAX_ISSUE_RELATED).optional(),
 });
 export type IssueInput = z.infer<typeof issueInputSchema>;
+
+/** One item of a batch: an issue, and the key that makes retrying it safe. */
+const IDEMPOTENCY_KEY = /^[\x21-\x7e]{1,128}$/;
+export const issueBatchItemSchema = issueInputSchema.extend({ idempotencyKey: z.string().regex(IDEMPOTENCY_KEY).optional() });
+export type IssueBatchItem = z.infer<typeof issueBatchItemSchema>;
+/** The envelope only; each item is checked on its own so one bad item does not refuse the others. */
+export const issueBatchEnvelopeSchema = z.object({ issues: z.array(z.unknown()).min(1).max(ISSUE_BATCH_MAX) });
+
+/** A screenshot sent as JSON: base64 image bytes. The API decides the type from the bytes, never from this. */
+export const issueAttachmentInputSchema = z.object({
+  // A little slack, so an image just over the limit is refused as too large (413) rather than as a malformed field.
+  data: z.string().min(8).max(ISSUE_ATTACHMENT_BASE64_MAX + 2048),
+  name: z.string().trim().min(1).max(100).optional(),
+  /** Optional hint. A mismatch with the bytes is refused. */
+  contentType: z.enum(ISSUE_ATTACHMENT_TYPES).optional(),
+});
+export type IssueAttachmentInput = z.infer<typeof issueAttachmentInputSchema>;
+
+/** A screenshot as stored beside its issue. The bytes live in private storage and are read through the API. */
+export interface IssueAttachment {
+  id: string;
+  name: string;
+  contentType: IssueAttachmentType;
+  size: number;
+  width: number;
+  height: number;
+  createdAt: number;
+}
+
+export const issueSimilarInputSchema = z.object({
+  kind: z.enum(ISSUE_KINDS).optional(),
+  title: trimmed(ISSUE_TITLE_MAX),
+  body: z.string().trim().max(ISSUE_BODY_MAX).optional(),
+  projectId: idText.optional(),
+  context: issueContextSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(10).default(5),
+});
+export type IssueSimilarInput = z.infer<typeof issueSimilarInputSchema>;
 
 export const issueReplyInputSchema = z.object({ body: z.string().trim().min(1).max(ISSUE_BODY_MAX), internal: z.boolean().optional() });
 export type IssueReplyInput = z.infer<typeof issueReplyInputSchema>;
@@ -94,6 +246,10 @@ export const issuePatchSchema = z.object({
   title: trimmed(ISSUE_TITLE_MAX).optional(),
   body: z.string().trim().min(1).max(ISSUE_BODY_MAX).optional(),
   kind: z.enum(ISSUE_KINDS).optional(),
+  /** The submitter's own view of how much it hurts. Clear it with null. */
+  severity: z.enum(ISSUE_SEVERITIES).nullable().optional(),
+  /** Replaces the related issues. The caller must be able to see each one. */
+  relatedIssues: z.array(relatedRef).max(MAX_ISSUE_RELATED).optional(),
   labels: z.array(issueLabelSchema).max(MAX_ISSUE_LABELS).optional(),
   priority: z.enum(ISSUE_PRIORITIES).nullable().optional(),
   duplicateOf: idText.nullable().optional(),
@@ -112,6 +268,8 @@ export const issueListQuerySchema = z.object({
   assignee: z.string().trim().min(1).max(200).optional(),
   label: issueLabelSchema.optional(),
   priority: z.enum(ISSUE_PRIORITIES).optional(),
+  severity: z.enum(ISSUE_SEVERITIES).optional(),
+  filedVia: z.enum(ISSUE_FILED_VIA).optional(),
   needsAttention: z.enum(['true', 'false']).transform(value => value === 'true').optional(),
   /** Only issues the caller submitted, even for staff. */
   mine: z.enum(['true', 'false']).transform(value => value === 'true').optional(),
@@ -150,7 +308,20 @@ export interface Issue {
   body: string;
   status: IssueStatus;
   projectId?: string;
+  /** Older issues may hold single `recordingId` and `sessionId` values; read context through normalizeIssueContext. */
   context?: IssueContext;
+  /** Set by the submitter. */
+  severity?: IssueSeverity;
+  /** Ids of issues this one relates to. Shown only where the viewer can see the other issue. */
+  related?: string[];
+  /** Screenshots, at most MAX_ISSUE_ATTACHMENTS. */
+  attachments?: IssueAttachment[];
+  /** Absent on issues filed before this was recorded. */
+  filedVia?: IssueFiledVia;
+  /** Server-set email reply intake. A signed mailbox capability associates the account, not independently verified authorship. */
+  source?: 'email';
+  /** For an agent: the name of the access key, or of the OAuth app, that filed it. */
+  client?: string;
   submitter: IssueSubmitter;
   /** Staff only. A staff user id, or `agent:` and the label of an access token. */
   assignee?: string;

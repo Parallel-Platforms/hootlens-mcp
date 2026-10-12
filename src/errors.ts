@@ -8,7 +8,7 @@ import { OAUTH_SCOPE_INFO, type OAuthScope } from '@hootlens/core';
 /** A stable, machine-readable reason, carried in the result's `_meta["hootlens/error"].code`. */
 export type ToolErrorCode =
   | 'unauthenticated' | 'missing_scope' | 'unknown_project' | 'project_required' | 'not_found' | 'rate_limited' | 'invalid_argument'
-  | 'staff_only' | 'conflict' | 'timeout' | 'unavailable' | 'api_error';
+  | 'staff_only' | 'conflict' | 'timeout' | 'unavailable' | 'api_error' | 'privacy_weakening_refused' | 'site_limit_reached';
 
 /** The place in the dashboard where keys and connected apps are managed. */
 export const DASHBOARD_ACCESS_PAGE = 'Settings, then AI assistant';

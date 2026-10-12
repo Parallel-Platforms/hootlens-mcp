@@ -6,7 +6,7 @@
  * changes can move the numbers on their own. Everything here is a count, a rate, an interval or a wording
  * rule, so the API, the MCP service and the dashboard say the same thing. No function claims a cause.
  */
-import type { ChangeMarker, Goal } from './changes';
+import { isMeasurementChange, type ChangeMarker, type Goal } from './changes';
 import type { DeviceClass } from './index';
 
 /** Visits each side needs before a conversion rate is compared. Matches the release comparison. */
@@ -72,7 +72,8 @@ export interface SideStats {
 }
 export const emptySide = (): SideStats => ({ visits: 0, snags: 0, scrollMeasured: 0, scrollHalf: 0, goals: {} });
 
-export type VerdictKind = 'too-few' | 'no-baseline' | 'no-clear-change' | 'rose' | 'fell';
+/** `counting-changed`: the change only changed how Hoot Lens counts, so the before and after numbers are not comparable and no verdict is given. */
+export type VerdictKind = 'too-few' | 'no-baseline' | 'no-clear-change' | 'rose' | 'fell' | 'counting-changed';
 export type VerdictCertainty = 'likely-real' | 'could-be-chance';
 export interface ConversionVerdict {
   kind: VerdictKind;
@@ -128,13 +129,19 @@ export interface GoalImpact {
   verdict: ConversionVerdict;
 }
 
-export function goalImpact(goal: Pick<Goal, 'id' | 'name' | 'since'>, before: SideStats, after: SideStats, beforeFrom: number): GoalImpact {
+/** The verdict for a goal when the change only changed counting: the rates are shown, but no rise or fall is claimed. */
+export const COUNTING_CHANGED_VERDICT: ConversionVerdict = {
+  kind: 'counting-changed',
+  text: 'No verdict: this change only changed how Hoot Lens counts, so a difference here reflects new counting, not visitor behavior',
+};
+
+export function goalImpact(goal: Pick<Goal, 'id' | 'name' | 'since'>, before: SideStats, after: SideStats, beforeFrom: number, options: { measurementOnly?: boolean } = {}): GoalImpact {
   const b = rateSide(before.visits, before.goals[goal.id] ?? 0);
   const a = rateSide(after.visits, after.goals[goal.id] ?? 0);
   return {
     goalId: goal.id, name: goal.name, before: b, after: a,
     differencePoints: b.rate === null || a.rate === null ? null : (a.rate - b.rate) * 100,
-    verdict: conversionVerdict(b, a, { goalSince: goal.since, beforeFrom }),
+    verdict: options.measurementOnly ? COUNTING_CHANGED_VERDICT : conversionVerdict(b, a, { goalSince: goal.since, beforeFrom }),
   };
 }
 
@@ -265,6 +272,8 @@ export interface ImpactReport {
   days: number;
   filters: { deviceClass?: DeviceClass; locale?: string };
   goals: Pick<Goal, 'id' | 'name'>[];
+  /** True when the change only changed counting (`kind: 'measurement'`): goal verdicts and element shares are not claims about visitors. */
+  measurementOnly?: boolean;
   groups: GroupImpact[];
   /** One sentence for people and agents. Observed numbers only. */
   summary: string;
@@ -272,6 +281,9 @@ export interface ImpactReport {
   caveats: string[];
   generatedAt: number;
 }
+
+/** Added to the report of a measurement-only change. */
+export const MEASUREMENT_CAVEAT = 'This change only changed how Hoot Lens counts. A jump or drop in a goal or in an element\'s clicks after it reflects new counting, not a change in visitor behavior, so no verdict is given.';
 
 export const IMPACT_CAVEATS: readonly string[] = [
   'Before and after, not an A/B test: seasonality, campaigns and traffic mix move numbers too.',
@@ -287,6 +299,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString
 export function impactSummary(report: Pick<ImpactReport, 'change' | 'groups' | 'goals'>): string {
   const { change, groups } = report;
   const subject = change.pageGroup === undefined ? 'The change' : `The change to ${groups[0]?.name ?? change.pageGroup}`;
+  if (isMeasurementChange(change)) return `${subject} only changed how Hoot Lens counts, so no verdict is given: goal and click counts that moved after it reflect new counting, not visitor behavior.`;
   if (!groups.length) return `${subject} has no recorded visits to compare yet.`;
   if (!report.goals.length) {
     const g = groups[0];

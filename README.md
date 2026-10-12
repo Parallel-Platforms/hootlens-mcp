@@ -2,7 +2,7 @@
 
 Give your coding agent evidence from website visits: recordings, click maps, funnels and recurring snags. Trace a finding to the page, release, device and recorded moment before proposing a fix.
 
-This repository contains the buildable source of [`@hootlens/mcp` 1.0.2](https://www.npmjs.com/package/@hootlens/mcp/v/1.0.2). Releases are published from the Hoot Lens monorepo. Issues and questions are welcome here.
+This repository prepares buildable source for `@hootlens/mcp` 1.1.0, imported from the reviewed Hoot Lens source commit recorded in [SOURCE.json](docs/SOURCE.json). This checkout does not establish npm publication. The last published version verified during preparation is [1.0.2](https://www.npmjs.com/package/@hootlens/mcp/v/1.0.2). Issues and questions are welcome here.
 
 [Public release preparation](docs/RELEASING.md) proposes a reviewed migration to public CI with npm provenance for a future version. It has not published a new version or changed npm publisher settings. [Security scan evidence](docs/SECURITY-EVIDENCE.md) separates published-source inspection from synthetic runtime enumeration.
 
@@ -43,6 +43,22 @@ Package 1.0.2 and the hosted server have different release schedules. This local
 
 End the local sign-in with `npx -y @hootlens/mcp@1.0.2 logout`. Revoke a connected app or access key in the Hoot Lens dashboard when access should end.
 
+## Create a site through an authenticated agent
+
+The prepared 1.1.0 source adds `create_site`. The verified account owner must explicitly approve the optional OAuth `sites:create` permission for all sites. It is never included in default login scopes. Personal access tokens, anonymous demo connections and project-pinned connections cannot create sites. An owner with no sites can authorize an agent to create their first site.
+
+From a built checkout, opt in with:
+
+```sh
+node dist/cli.mjs login --scopes read,replay,sites:create
+```
+
+The tool takes a site name, exact HTTPS origins and a stable `idempotencyKey`. The API enforces available site slots atomically. New agent-created sites use balanced or strict privacy and require visitor consent. Retrying the same site arguments and key recovers the original site for 24 hours. After that, inspect existing sites before creating again.
+
+The response distinguishes site creation from tag installation and received recording data. Install the platform-specific code, connect the visitor consent platform or an explicit consent control, then use `check_install`. If fetching installation code temporarily fails, the response keeps the created project ID so the agent can retrieve its tag with `get_install_snippet` rather than create another site.
+
+This source also includes MCP Apps, JavaScript error tools and the optional `configure` toolset. Settings changes remain a preview and apply flow that can only tighten privacy. Existing OAuth connections require fresh approval to gain a new optional permission. Inspect `tools/list` on the actual connection; npm 1.0.2 does not include these newer tools.
+
 ## Build and verify the source
 
 ```sh
@@ -57,7 +73,7 @@ The shared source needed by the server is included under `packages/core`. No pri
 
 The tests check snapshot hashes, version identity, CLI execution and a real stdio SDK connection to a loopback API with synthetic fixtures. They check read-tool discovery, project pinning and API refusal. They do not validate customer capture, production authorization, browser sign-in or compatibility with every client. CI runs these checks on Linux and Windows with Node 20 and 22; consult the actual run before claiming those platforms passed.
 
-[Source provenance and synchronization](docs/SOURCE.md) records the release commit and npm artifact integrity. The earlier public snapshot contained unreleased viewer files; this snapshot follows the published 1.0.2 release and excludes those files.
+[Source provenance and synchronization](docs/SOURCE.md) records the exact imported source commit and normalized file hashes for the prepared 1.1.0 source. No npm integrity or attestation is recorded for this unpublished version. Historical 1.0.2 security evidence remains separately versioned.
 
 ## Privacy and access
 

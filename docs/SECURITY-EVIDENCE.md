@@ -1,5 +1,7 @@
 # Security scan evidence, 10 October 2026
 
+The evidence below applies to published versions 1.0.1 and 1.0.2. The prepared 1.1.0 source has additional tools and is not covered by these historical scanner results; no new score or attestation is claimed.
+
 This is a bounded investigation of the local published package. It does not establish hosted authorization, production security, browser sign-in behavior, customer capture safety or compatibility with every client. [SECURITY-EVIDENCE.json](SECURITY-EVIDENCE.json) records selected fields from the actual scans; it is not a signed scanner certificate.
 
 The [MCPRush listing](https://mcprush.com/hootlens/hoot-lens-mcp#security) still displayed 1.0.1, scanned 9 October, during this review. The full report toggle exposed the score vector but no finding details. Local scans with the official `mcptrustchecker` 1.14.0 reproduced the listing's 93 client score, 100 threat score and surface digest for 1.0.1, and found the same source-level results for 1.0.2:

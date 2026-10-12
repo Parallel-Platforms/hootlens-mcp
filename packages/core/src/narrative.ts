@@ -11,9 +11,12 @@
  * developer-set `data-hoot-id`, an element kind or a number.
  */
 import { agentLabel } from './agent';
+import { describeError, linkedClickIndex } from './error-capture';
+import type { RecordingError } from './errors';
 import { isTouchRecording } from './touch';
+import { NOT_INTERACTIVE_PHRASE, describeContext, topSnagPhrase, type ElementContext, type TopSnag } from './element-context';
 import {
-  segmentDeviceClass,
+  segmentDeviceClass, VISIT_IDLE_MS,
   type BrowserName, type Click, type DeviceClass, type OsName, type PrivacyPreset, type RecordingDetail,
 } from './index';
 
@@ -32,7 +35,7 @@ export const NARRATIVE_SCROLL_MILESTONES = [25, 50, 75, 100] as const;
  */
 export const NARRATIVE_TERMS = { pileUp: 'pile-up', noShow: 'no-show', misfire: 'misfire' } as const;
 
-export type NarrativeStepKind = 'landed' | 'scrolled' | 'clicked' | 'snag' | 'navigated' | 'resized' | 'idle' | 'left';
+export type NarrativeStepKind = 'landed' | 'scrolled' | 'clicked' | 'snag' | 'error' | 'navigated' | 'resized' | 'idle' | 'left';
 
 export interface NarrativeStep {
   /** Milliseconds since the visit began. */
@@ -49,11 +52,18 @@ export interface NarrativeStep {
   selector?: string;
   /** Element label quoted in `text`. Absent under the strict preset. */
   label?: string;
+  /** Source file and line (`src/Pricing.tsx:42`) behind the clicked element, when the site's build plugin stamped it. Open that file to see the code. */
+  source?: string;
+  /** False when the clicked element is not a link, button or other control. Present only on click and snag steps for such elements. */
+  interactive?: false;
 }
 
 export interface NarrativeFacts {
+  /** Time on the site without long idle time: stretches of 30 minutes or more with no visitor activity are left out. */
   durationMs: number;
-  /** Duration minus idle gaps. */
+  /** Elapsed time from the first to the last moment of the visit. Equals `durationMs` unless the visit sat idle for 30 minutes or more. */
+  elapsedMs: number;
+  /** Duration minus idle gaps of 10 seconds or more. */
   activeMs: number;
   /** Distinct page paths in the order first visited. */
   pages: string[];
@@ -70,9 +80,15 @@ export interface NarrativeFacts {
   touch: boolean;
   /** Episodes (three or more rapid clicks on one element), not individual clicks. */
   pileUps: number;
+  /** Pile-up episodes on an element that is not a link, button or other control. Absent when none. */
+  pileUpsOnNonControls?: number;
   noShows: number;
   misfires: number;
+  /** Distinct JavaScript errors recorded in the visit. Absent when the site does not record them or none happened. */
+  errors?: number;
   exitPage: string;
+  /** Where the visit went when its last click left the page: a same-site path, or another site's origin only. Absent when no link click ended it. */
+  exitTo?: string;
 }
 
 export interface Narrative {
@@ -98,7 +114,7 @@ export interface NarrativeOptions {
 }
 
 const STEP_ORDER: Record<NarrativeStepKind, number> = {
-  landed: 0, navigated: 1, resized: 2, scrolled: 3, clicked: 4, snag: 5, idle: 6, left: 7,
+  landed: 0, navigated: 1, resized: 2, scrolled: 3, clicked: 4, snag: 5, error: 6, idle: 7, left: 8,
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -161,6 +177,12 @@ interface ElementInfo {
   /** Element kind in plain words, without an article. */
   kind: string;
   label?: string;
+  /** Tag, region and (outside strict) heading and own text of the element. Used when nothing else names it. */
+  context?: ElementContext;
+  /** The recorded context as one phrase. */
+  contextText?: string;
+  /** True when the tracker said the target is not a link, button or other control. */
+  inactive: boolean;
   /** Where in the viewport the press landed, in words. Only used when nothing names the element. */
   place?: string;
 }
@@ -202,18 +224,32 @@ function describeElement(click: Click, allowLabel: boolean, touch = false, names
     ? click.label.replace(/\p{Cc}/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) || undefined
     : undefined);
   const place = placePhrase(click.x, click.y, touch);
-  return { hootId: hootId || undefined, hootIdOnTarget: Boolean(hootId) && hootIdOnTarget, kind, ...(label ? { label } : {}), ...(place ? { place } : {}) };
+  // Strict never carries page text; a context that arrives with some anyway is cut back to its tag and region.
+  const context = click.context ? (allowLabel ? click.context : { ...(click.context.tag ? { tag: click.context.tag } : {}), ...(click.context.region ? { region: click.context.region } : {}) }) : undefined;
+  const contextText = describeContext(context);
+  return {
+    hootId: hootId || undefined, hootIdOnTarget: Boolean(hootId) && hootIdOnTarget, kind, ...(label ? { label } : {}),
+    ...(contextText ? { context, contextText } : {}), inactive: click.interactive === false, ...(place ? { place } : {}),
+  };
 }
 
-/** Label, else data-hoot-id, else element kind. Never invents text. */
-function subject(info: ElementInfo): string {
+/**
+ * Label, else data-hoot-id, else the recorded context, else element kind. Never invents text. `flagInactive` is for snags:
+ * a pile-up on something that is not a link or button says so, because tapping text people expect to act is the signal.
+ */
+function subject(info: ElementInfo, flagInactive = false): string {
   // The tracker's name for a control in a private region that carries no site-authored identifier.
   if (info.hootId === 'private control' && info.hootIdOnTarget && !info.label) return 'a private control';
-  const noun = info.kind === 'text' ? 'text' : `${article(info.kind)} ${info.kind}`;
-  if (info.label) return `'${info.label}'`;
-  if (info.hootId) return info.hootIdOnTarget ? `the ${info.hootId}` : `${noun} in the ${info.hootId}`;
+  // An element that carries text of its own reads as text, whatever its tag.
+  const noun = info.kind === 'text' || (info.kind === 'element' && info.context?.text) ? 'text' : `${article(info.kind)} ${info.kind}`;
+  const inactive = flagInactive && info.inactive;
+  if (info.label) return inactive ? `'${info.label}' (${NOT_INTERACTIVE_PHRASE})` : `'${info.label}'`;
+  if (info.hootId && info.hootIdOnTarget) return inactive ? `the ${info.hootId} (${NOT_INTERACTIVE_PHRASE})` : `the ${info.hootId}`;
+  if (info.contextText) return inactive ? `${noun} that is ${NOT_INTERACTIVE_PHRASE}: ${info.contextText}` : `${noun}: ${info.contextText}`;
+  if (info.hootId) return inactive ? `${noun} in the ${info.hootId} that is ${NOT_INTERACTIVE_PHRASE}` : `${noun} in the ${info.hootId}`;
   // Nothing names it and its role is unknown: the best readable description is where it was.
-  return info.kind === 'element' && info.place ? `${noun} ${info.place}` : noun;
+  const where = info.kind === 'element' && info.place ? `${noun} ${info.place}` : noun;
+  return inactive ? `${where} that is ${NOT_INTERACTIVE_PHRASE}` : where;
 }
 
 function clickText(click: Click, info: ElementInfo, touch: boolean): string {
@@ -243,13 +279,23 @@ interface PageFacts {
   startMs: number;
   endMs: number;
   idleMs: number;
+  /** Idle gaps of VISIT_IDLE_MS or more, which are not time spent. Part of `idleMs`. */
+  longIdleMs: number;
   maxScrollPercent: number;
   scrolled: boolean;
   clicks: number;
   /** Subject of each pile-up episode, as written in the text. */
   pileUps: string[];
+  /** Pile-up episodes on an element the tracker said is not a link, button or other control. */
+  inactivePileUps: number;
   noShows: number;
   misfires: number;
+  errors: number;
+}
+
+/** `TypeError: x is undefined at src/cart.ts:42`. Under strict the message was never recorded, so only the name and place read. */
+function errorText(error: RecordingError): string {
+  return error.location ? `${describeError(error)} at ${error.location}` : describeError(error);
 }
 
 function readPage(detail: RecordingDetail, privacy: PrivacyPreset, names?: ReadonlyMap<string, string>): PageFacts {
@@ -260,16 +306,22 @@ function readPage(detail: RecordingDetail, privacy: PrivacyPreset, names?: Reado
   const touch = isTouchRecording(recording, events);
   const startMs = events[0]?.timestamp ?? recording.startedAt;
   // The visit ends where the replay ends: the last recorded event. This is the player's own duration (first to last event),
-  // so the summary and the clock agree. Only a recording too short to play falls back to the recorded interval.
+  // so the summary and the clock agree. A press can come after it: a tap on a link that unloads the page is recorded by
+  // the click tracker a moment after the replay recorder has stopped. The end never precedes the last press, so "Left"
+  // is always the final step. Only a recording too short to play falls back to the recorded interval.
+  const lastClickAt = clicks[clicks.length - 1]?.timestamp ?? 0;
   const endMs = events.length >= 2
-    ? Math.max(events[events.length - 1].timestamp, startMs)
-    : Math.max(clicks[clicks.length - 1]?.timestamp ?? 0, recording.endedAt ?? 0, startMs);
+    ? Math.max(events[events.length - 1].timestamp, lastClickAt, startMs)
+    : Math.max(lastClickAt, recording.endedAt ?? 0, startMs);
   const steps: Draft[] = [];
-  const add = (timestamp: number, kind: NarrativeStepKind, text: string, extra: { selector?: string; label?: string } = {}) =>
+  const add = (timestamp: number, kind: NarrativeStepKind, text: string, extra: { selector?: string; label?: string; source?: string; interactive?: false } = {}) =>
     steps.push({
       atMs: 0, clock: '', kind, text, recordingId: recording.id, offsetMs: Math.max(0, timestamp - startMs), timestamp,
-      ...(extra.selector ? { selector: extra.selector } : {}), ...(extra.label ? { label: extra.label } : {}),
+      ...(extra.selector ? { selector: extra.selector } : {}), ...(extra.label ? { label: extra.label } : {}), ...(extra.source ? { source: extra.source } : {}),
+      ...(extra.interactive === false ? { interactive: false as const } : {}),
     });
+  // The context is quoted in the step's text, so the step does not repeat it.
+  const elementExtra = (info: ElementInfo) => (info.inactive ? { interactive: false as const } : {});
 
   // Document height: the recorded scroll measure, else the latest click's measurement.
   const docHeight = recording.scroll?.docHeight
@@ -354,10 +406,22 @@ function readPage(detail: RecordingDetail, privacy: PrivacyPreset, names?: Reado
 
   // Clicks. A pile-up is a run on one element, each tap within a second of the last, with a
   // pile-up click in it; the taps before that click are part of the same episode.
+  // A JavaScript error within two seconds after a click belongs to that click. When the click is a snag, the error is
+  // part of its sentence; otherwise it is a step of its own.
+  const errors = [...(detail.errors ?? [])].sort((a, b) => a.at - b.at);
+  const followed = new Map<number, RecordingError>();
+  const standalone: RecordingError[] = [];
+  for (const error of errors) {
+    const index = linkedClickIndex(error, clicks);
+    const click = index === undefined ? undefined : clicks[index];
+    if (index !== undefined && click && click.kind !== 'click' && !followed.has(index)) followed.set(index, error);
+    else standalone.push(error);
+  }
   const keyOf = (click: Click) => String(click.nodeId ?? click.selector ?? click.target);
   const pileUps: string[] = [];
   let noShows = 0;
   let misfires = 0;
+  let inactivePileUps = 0;
   for (let index = 0; index < clicks.length;) {
     let end = index + 1;
     while (end < clicks.length && keyOf(clicks[end]) === keyOf(clicks[index]) && clicks[end].timestamp - clicks[end - 1].timestamp < 1000) end++;
@@ -366,19 +430,24 @@ function readPage(detail: RecordingDetail, privacy: PrivacyPreset, names?: Reado
     if (run.some(click => click.kind === 'rage-click')) {
       const info = describeElement(run[run.length - 1], allowLabel, touch, names);
       const span = run[run.length - 1].timestamp - run[0].timestamp;
-      const text = `${capitalize(NARRATIVE_TERMS.pileUp)} on ${subject(info)} (${run.length} taps in ${(span / 1000).toFixed(1)} s)`;
+      const linkedError = run.map(click => followed.get(clicks.indexOf(click))).find(found => found !== undefined);
+      const text = `${capitalize(NARRATIVE_TERMS.pileUp)} on ${subject(info, true)} (${run.length} taps in ${(span / 1000).toFixed(1)} s${linkedError ? `, followed by ${errorText(linkedError)}` : ''})`;
       pileUps.push(subject(info));
-      add(run[0].timestamp, 'snag', text, { ...(run[0].selector ? { selector: run[0].selector } : {}), ...(info.label ? { label: info.label } : {}) });
+      const runSource = [...run].reverse().find(click => click.source)?.source;
+      add(run[0].timestamp, 'snag', text, { ...(run[0].selector ? { selector: run[0].selector } : {}), ...(info.label ? { label: info.label } : {}), ...(runSource ? { source: runSource } : {}), ...elementExtra(info) });
+      if (info.inactive) inactivePileUps++;
     } else {
       for (const click of run) {
         const info = describeElement(click, allowLabel, touch, names);
-        const extra = { ...(click.selector ? { selector: click.selector } : {}), ...(info.label ? { label: info.label } : {}) };
+        const extra = { ...(click.selector ? { selector: click.selector } : {}), ...(info.label ? { label: info.label } : {}), ...(click.source ? { source: click.source } : {}), ...elementExtra(info) };
         if (click.kind === 'dead-click') {
           noShows++;
-          add(click.timestamp, 'snag', `${capitalize(NARRATIVE_TERMS.noShow)} on ${subject(info)} (${touch ? 'tapped' : 'clicked'}, nothing changed on the page)`, extra);
+          const linkedError = followed.get(clicks.indexOf(click));
+          add(click.timestamp, 'snag', `${capitalize(NARRATIVE_TERMS.noShow)} on ${subject(info, true)} (${touch ? 'tapped' : 'clicked'}, nothing changed on the page${linkedError ? `, followed by ${errorText(linkedError)}` : ''})`, extra);
         } else if (click.kind === 'error-click') {
           misfires++;
-          add(click.timestamp, 'snag', `${capitalize(NARRATIVE_TERMS.misfire)} on ${subject(info)} (a script error followed the ${touch ? 'tap' : 'click'})`, extra);
+          const linkedError = followed.get(clicks.indexOf(click));
+          add(click.timestamp, 'snag', `${capitalize(NARRATIVE_TERMS.misfire)} on ${subject(info, true)} (${linkedError ? `followed by ${errorText(linkedError)}` : `a script error followed the ${touch ? 'tap' : 'click'}`})`, extra);
         } else {
           add(click.timestamp, 'clicked', clickText(click, info, touch), extra);
         }
@@ -387,20 +456,27 @@ function readPage(detail: RecordingDetail, privacy: PrivacyPreset, names?: Reado
     index = end;
   }
 
+  for (const error of standalone) {
+    activity.push(error.at);
+    add(error.at, 'error', `JavaScript error: ${errorText(error)}`);
+  }
+
   // Idle gaps, within this page view only.
   activity.sort((a, b) => a - b);
   let idleMs = 0;
+  let longIdleMs = 0;
   for (let index = 1; index < activity.length; index++) {
     const gap = activity[index] - activity[index - 1];
     if (gap > NARRATIVE_IDLE_MS) {
       idleMs += gap;
+      if (gap >= VISIT_IDLE_MS) longIdleMs += gap;
       add(activity[index - 1], 'idle', `Idle for ${narrativeSpan(gap)}`);
     }
   }
 
   const percentOf = (depth: number) => (docHeight ? Math.min(100, depth >= docHeight - 2 ? 100 : Math.round((depth / docHeight) * 100)) : 0);
   return {
-    steps, touch, startMs, endMs, idleMs, scrolled, noShows, misfires, pileUps, clicks: clicks.length,
+    steps, touch, startMs, endMs, idleMs, longIdleMs, scrolled, noShows, misfires, pileUps, inactivePileUps, clicks: clicks.length, errors: errors.length,
     maxScrollPercent: percentOf(maxDepth),
   };
 }
@@ -439,9 +515,12 @@ function summarize(facts: NarrativeFacts, scrolled: boolean, pileUpTargets: stri
   if (facts.clicks) pieces.push(`made ${plural(facts.clicks, facts.touch ? 'tap' : 'click')}`);
   const snags = snagPhrase({ pileUps: pileUpTargets, noShows: facts.noShows, misfires: facts.misfires });
   if (snags) pieces.push(snags);
+  if (facts.errors) pieces.push(`hit ${plural(facts.errors, 'JavaScript error')}`);
   if (idleMs > 0) pieces.push(`was idle for ${narrativeSpan(idleMs)}`);
   const second = pieces.length ? `${capitalize(joinList(pieces))}.` : `No ${facts.touch ? 'taps' : 'clicks'} or scrolling were recorded.`;
-  return `${visitSentence({ device: facts.device, durationMs: facts.durationMs, paths: facts.pages, browser: facts.browser, os: facts.os })} ${second}`;
+  const left = facts.elapsedMs - facts.durationMs;
+  const note = left > 0 ? ` The page then sat open for ${narrativeSpan(left)} with no activity, which is not counted as time on the site.` : '';
+  return `${visitSentence({ device: facts.device, durationMs: facts.durationMs, paths: facts.pages, browser: facts.browser, os: facts.os })} ${second}${note}${facts.exitTo ? ` ${exitSentence(facts.exitTo)}` : ''}`;
 }
 
 /**
@@ -451,6 +530,10 @@ function summarize(facts: NarrativeFacts, scrolled: boolean, pileUpTargets: stri
 export function sessionOneLiner(input: {
   device: DeviceClass; durationMs: number; paths: string[]; browser?: BrowserName; os?: OsName;
   clickCount: number; rageClickCount: number; deadClickCount: number; errorClickCount: number;
+  /** Where the visit went when it left through a link. See exitSentence. */
+  exitTo?: string;
+  /** The element with the most snag clicks. The line ends with it. */
+  topSnag?: TopSnag;
 }): string {
   const pieces: string[] = [];
   const press = input.device === 'desktop' ? 'click' : 'tap';
@@ -464,8 +547,11 @@ export function sessionOneLiner(input: {
   } else {
     pieces.push(`No ${press}s were recorded.`);
   }
-  return `${visitSentence(input)} ${pieces[0]}`;
+  return `${visitSentence(input)} ${pieces[0]}${input.exitTo ? ` ${exitSentence(input.exitTo)}` : ''}${input.topSnag ? ` Most snags: ${topSnagPhrase(input.topSnag)}.` : ''}`;
 }
+
+/** "Exited to /pricing." for a link that left the page: a same-site path, or another site's origin only. */
+export const exitSentence = (exitTo: string): string => `Exited to ${exitTo}.`;
 
 // ---------------------------------------------------------------------------------------------
 // Build
@@ -473,7 +559,7 @@ export function sessionOneLiner(input: {
 function capSteps(steps: NarrativeStep[], max: number): NarrativeStep[] {
   if (steps.length <= max) return steps;
   // Landing, navigation, snags and the exit always stay; the rest fills what room remains.
-  const must = (step: NarrativeStep) => ['landed', 'navigated', 'snag', 'left'].includes(step.kind);
+  const must = (step: NarrativeStep) => ['landed', 'navigated', 'snag', 'error', 'left'].includes(step.kind);
   const keep = new Set<NarrativeStep>();
   const required = steps.filter(must);
   const left = required.find(step => step.kind === 'left');
@@ -521,9 +607,12 @@ export function buildNarrative(details: RecordingDetail[], options: NarrativeOpt
     }
   });
   const last = pages[pages.length - 1];
+  // Leaving is the last thing that happens: never before any step already read, whichever page view it came from.
+  const leftAt = Math.max(last.read.endMs - origin, ...raw.map(step => step.atMs), 0);
   raw.push({
-    atMs: Math.max(0, last.read.endMs - origin), clock: '', kind: 'left', text: `Left ${last.detail.recording.path} (end of recording)`,
-    recordingId: last.detail.recording.id, offsetMs: Math.max(0, last.read.endMs - last.read.startMs),
+    atMs: leftAt, clock: '', kind: 'left',
+    text: last.detail.recording.exitTo ? `Left ${last.detail.recording.path} through a link to ${last.detail.recording.exitTo}` : `Left ${last.detail.recording.path} (end of recording)`,
+    recordingId: last.detail.recording.id, offsetMs: Math.max(0, origin + leftAt - last.read.startMs),
   });
 
   const sorted = raw
@@ -533,12 +622,14 @@ export function buildNarrative(details: RecordingDetail[], options: NarrativeOpt
   const steps = capSteps(sorted, max);
   const omittedSteps = sorted.length - steps.length;
 
-  const durationMs = Math.max(0, Math.max(...pages.map(page => page.read.endMs)) - origin);
+  const elapsedMs = Math.max(0, Math.max(...pages.map(page => page.read.endMs)) - origin, leftAt);
+  // A tab left open is not time spent: stretches of 30 minutes or more without activity are not part of the duration.
+  const durationMs = Math.max(0, elapsedMs - pages.reduce((total, page) => total + page.read.longIdleMs, 0));
   const idleMs = pages.reduce((total, page) => total + page.read.idleMs, 0);
   const referrer = first.referrer;
   const utmSource = first.utm?.source;
   const facts: NarrativeFacts = {
-    durationMs, activeMs: Math.max(0, durationMs - idleMs),
+    durationMs, elapsedMs, activeMs: Math.max(0, durationMs - Math.max(0, idleMs - pages.reduce((total, page) => total + page.read.longIdleMs, 0))),
     pages: [...new Set(used.map(detail => detail.recording.path))],
     device: segmentDeviceClass(first),
     ...(first.browser ? { browser: first.browser } : {}), ...(first.os ? { os: first.os } : {}),
@@ -547,13 +638,16 @@ export function buildNarrative(details: RecordingDetail[], options: NarrativeOpt
     clicks: pages.reduce((total, page) => total + page.read.clicks, 0),
     touch: pages.filter(page => page.read.touch).length > pages.length / 2,
     pileUps: pages.reduce((total, page) => total + page.read.pileUps.length, 0),
+    ...(pages.some(page => page.read.inactivePileUps) ? { pileUpsOnNonControls: pages.reduce((total, page) => total + page.read.inactivePileUps, 0) } : {}),
     noShows: pages.reduce((total, page) => total + page.read.noShows, 0),
     misfires: pages.reduce((total, page) => total + page.read.misfires, 0),
+    ...(pages.some(page => page.read.errors) ? { errors: pages.reduce((total, page) => total + page.read.errors, 0) } : {}),
     exitPage: used[used.length - 1].recording.path,
+    ...(used[used.length - 1].recording.exitTo ? { exitTo: used[used.length - 1].recording.exitTo } : {}),
   };
   // The summary lists every page view, not only distinct paths, when it counts them.
   const summaryFacts = { ...facts, pages: used.map(detail => detail.recording.path) };
-  const summary = summarize(summaryFacts, pages.some(page => page.read.scrolled), pages.flatMap(page => page.read.pileUps), idleMs);
+  const summary = summarize(summaryFacts, pages.some(page => page.read.scrolled), pages.flatMap(page => page.read.pileUps), Math.max(0, idleMs - (elapsedMs - durationMs)));
 
   const notes: string[] = [];
   if (omittedSteps) notes.push(`…${omittedSteps} more ${omittedSteps === 1 ? 'step' : 'steps'} not shown`);

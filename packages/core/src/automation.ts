@@ -16,6 +16,7 @@
 export const AUTOMATION_REASONS = [
   'webdriver', 'headless', 'bot_agent', 'rapid_input', 'metronome',
   'untrusted_events', 'unpaired_clicks', 'no_pointer_movement', 'hidden_visit', 'same_spot', 'sustained_clicking',
+  'repeat_load', 'synthetic_load',
 ] as const;
 export type AutomationReason = typeof AUTOMATION_REASONS[number];
 
@@ -32,12 +33,19 @@ export const AUTOMATION_BITS: Readonly<Record<AutomationReason, number>> = {
   hidden_visit: 1 << 8,
   same_spot: 1 << 9,
   sustained_clicking: 1 << 10,
+  repeat_load: 1 << 11,
+  synthetic_load: 1 << 12,
 };
 /** Every bit a batch's `auto` field may carry. Anything above is dropped. */
 export const AUTOMATION_MASK = Object.values(AUTOMATION_BITS).reduce((all, bit) => all | bit, 0);
 
 /** One of these alone makes a visit automated. */
-export const STRONG_REASONS: readonly AutomationReason[] = ['webdriver', 'headless', 'bot_agent', 'rapid_input', 'metronome'];
+export const STRONG_REASONS: readonly AutomationReason[] = ['webdriver', 'headless', 'bot_agent', 'rapid_input', 'metronome', 'repeat_load', 'synthetic_load'];
+/**
+ * The reasons that describe a visit by its pattern of loading, not by the software that drove it. A visit with only these
+ * is worded as a suspected duplicate or scripted page load, because a person can cause them too (see repeatLoadBits).
+ */
+export const LOAD_PATTERN_REASONS: readonly AutomationReason[] = ['repeat_load', 'synthetic_load'];
 /** Several of these together make a visit suspected. One alone is not enough. */
 export const WEAK_REASONS: readonly AutomationReason[] = ['untrusted_events', 'unpaired_clicks', 'no_pointer_movement', 'hidden_visit', 'same_spot', 'sustained_clicking'];
 /** Weak signals needed for a suspected visit. */
@@ -71,16 +79,88 @@ export const AUTOMATION_REASON_TEXT: Readonly<Record<AutomationReason, string>> 
   hidden_visit: 'The page stayed hidden for the whole visit.',
   same_spot: 'Most clicks in a batch landed on exactly the same point.',
   sustained_clicking: 'More than 60 clicks in 30 seconds, a pace a person rarely keeps up.',
+  repeat_load: 'This visit began within 10 seconds of two or more others from the same browser, system, window size, region, landing page and referrer, each with no clicks and lasting 5 seconds or less, and together they were at least half of the visits that began in that time.',
+  synthetic_load: 'The page loaded in a square window of 800 pixels or more (no common screen has one) and ended within 5 seconds with no clicks and no scrolling.',
 };
 
 export const AUTOMATION_LEVEL_LABEL: Readonly<Record<AutomationLevel, string>> = {
   automated: 'Automated visit',
   suspected: 'Suspected automated visit',
 };
+/** The label for a verdict. A visit flagged only for its loading pattern is a suspected duplicate or scripted load, not a claim about software. */
+export function automationLabel(verdict: AutomationVerdict): string {
+  return verdict.level === 'automated' && verdict.reasons.length > 0 && verdict.reasons.every(reason => LOAD_PATTERN_REASONS.includes(reason))
+    ? 'Suspected duplicate or scripted page load'
+    : AUTOMATION_LEVEL_LABEL[verdict.level];
+}
 
 /** How the recordings and sessions lists treat automated visits. `exclude` is the default everywhere. */
 export type AutomatedFilter = 'exclude' | 'include' | 'only';
 export const AUTOMATED_FILTERS: readonly AutomatedFilter[] = ['exclude', 'include', 'only'];
+
+/* ------------------------------------------------------------------ load patterns */
+
+/**
+ * Repeat loads. Three or more visits that began within this long of each other, from the same browser family,
+ * operating system, device class, window size (width and height), region, landing page and referrer, each with no clicks
+ * and at most REPEAT_QUIET_MS long. The third and later ones are flagged; the first two cannot be told from ordinary
+ * visits when they arrive, so they stay counted.
+ *
+ * Why these thresholds. A person who reloads a page stays in the same session (the tracker keeps the session in
+ * sessionStorage), so a reload is not a new visit and never counts here. Separate visits within seconds need a new tab or
+ * window each time, with the same exact window size. A very common phone model landing on a popular page can match by
+ * chance, so a match also needs: at least REPEAT_MIN_EARLIER earlier matches, a known browser and operating system, and
+ * matches that are at least REPEAT_DOMINANCE of all the visits that began in the window. Among a crowd of different visits
+ * (a campaign that sends many people to one page at once) a few look-alikes are not a pattern and nothing is flagged; the
+ * cost is that a repeat inside a crowd goes unflagged. All of it is observed behavior, not identification: nothing stored
+ * identifies a device, and the flag says how the visits looked, not who made them.
+ */
+export const REPEAT_WINDOW_MS = 10_000;
+export const REPEAT_MIN_EARLIER = 2;
+export const REPEAT_QUIET_MS = 5_000;
+/** The share of the window's visits that the matching ones must make up. */
+export const REPEAT_DOMINANCE = 0.5;
+/** Most earlier visits one comparison reads. */
+export const REPEAT_MAX_RECENT = 25;
+
+/** What two visits must share to count as the same kind of load. */
+export interface LoadSignature {
+  browser?: string; os?: string; deviceClass: string; width: number; height: number;
+  country?: string; subdivision?: string; path: string; referrer?: string;
+}
+export interface RecentVisit extends LoadSignature { id: string; startedAt: number; durationMs: number; clickCount: number; }
+
+const sameLoad = (a: LoadSignature, b: LoadSignature): boolean =>
+  a.browser === b.browser && a.os === b.os && a.deviceClass === b.deviceClass && a.width === b.width && a.height === b.height
+  && a.country === b.country && a.subdivision === b.subdivision && a.path === b.path && a.referrer === b.referrer;
+
+/** The `repeat_load` bit for a visit that is beginning, given the visits that began shortly before it. 0 when it does not apply. */
+export function repeatLoadBits(visit: LoadSignature & { id: string; startedAt: number }, recent: readonly RecentVisit[]): number {
+  if (visit.browser === undefined || visit.os === undefined) return 0;
+  let inWindow = 0;
+  let matching = 0;
+  for (const other of recent.slice(0, REPEAT_MAX_RECENT)) {
+    if (other.id === visit.id || other.startedAt > visit.startedAt || visit.startedAt - other.startedAt > REPEAT_WINDOW_MS) continue;
+    inWindow++;
+    if (other.clickCount === 0 && other.durationMs <= REPEAT_QUIET_MS && sameLoad(visit, other)) matching++;
+  }
+  return matching >= REPEAT_MIN_EARLIER && matching >= inWindow * REPEAT_DOMINANCE ? AUTOMATION_BITS.repeat_load : 0;
+}
+
+/** Windows at least this wide and exactly as tall as wide. */
+export const SYNTHETIC_MIN_SQUARE = 800;
+export const SYNTHETIC_MAX_MS = 5_000;
+
+/**
+ * The `synthetic_load` bit for a visit whose last page view just ended (its final batch): a square window of
+ * SYNTHETIC_MIN_SQUARE pixels or more, no clicks, no scrolling and at most SYNTHETIC_MAX_MS long. Real screens and
+ * windows are almost never exactly square at that size; the other conditions keep a person who happened to resize a
+ * window from being flagged once they interact.
+ */
+export function syntheticLoadBits(visit: { width: number; height: number; durationMs: number; clickCount: number; scrolled: boolean; final: boolean }): number {
+  return visit.final && visit.width === visit.height && visit.width >= SYNTHETIC_MIN_SQUARE && visit.clickCount === 0 && !visit.scrolled && visit.durationMs <= SYNTHETIC_MAX_MS
+    ? AUTOMATION_BITS.synthetic_load : 0;
+}
 
 /* ------------------------------------------------------------------ user agents */
 
