@@ -21,6 +21,7 @@ test('the compiled explanation tool keeps allowance replies neutral and preserve
     calls.push({ method: request.method, path: request.url });
     response.setHeader('Content-Type', 'application/json');
     if (request.url === '/v1/access') return response.end(JSON.stringify({ credential: { scopes: ['read'] } }));
+    if (request.url === '/v1/projects') return response.end(JSON.stringify({ projects: [{ id: 'proj_fixture', name: 'Synthetic fixture' }] }));
     if (request.url === '/v1/projects/proj_fixture/explanations') return response.writeHead(scenario.status).end(JSON.stringify(scenario.body));
     return response.writeHead(404).end('{}');
   });
@@ -55,7 +56,8 @@ test('the compiled explanation tool keeps allowance replies neutral and preserve
     scenario = { status: 402, body: { code: 'other_entitlement', error: 'Other entitlement refusal' } };
     const unrelated = await call(); assert.equal(unrelated.isError, true); assert.equal(unrelated._meta['hootlens/error'].code, 'api_error');
     assert.doesNotMatch(JSON.stringify(unrelated), /allowance_used/);
-    assert.ok(calls.every(request => (request.method === 'GET' && request.path === '/v1/access') || (request.method === 'POST' && request.path === '/v1/projects/proj_fixture/explanations')));
+    assert.equal(calls.filter(request => request.method === 'GET' && request.path === '/v1/projects').length, 1, 'the existing 403 helper confirms project access before explaining the refusal');
+    assert.ok(calls.every(request => (request.method === 'GET' && ['/v1/access', '/v1/projects'].includes(request.path)) || (request.method === 'POST' && request.path === '/v1/projects/proj_fixture/explanations')));
   } finally {
     await client.close(); api.closeAllConnections(); await new Promise(resolve => api.close(resolve));
   }
