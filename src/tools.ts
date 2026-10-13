@@ -524,7 +524,7 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
 
   tool('explain_snags', {
     toolset: 'read', scope: 'read', scoped: true, title: 'Explain snags',
-    description: `Explains the snags (pile-ups, no-shows and misfires) for one heatmap cohort, or for one element in it. Returns a short explanation with the evidence counts, possible causes, changes to try and what to check in recordings, plus the exact aggregated summary that was sent to OpenAI to write it. Only aggregated counts leave Hoot Lens: no recordings, page text or visitor identifiers. Refused with 403 unless the project owner turned on AI explanations in Settings. Falls back to rule-based text if the model is unavailable (status "fallback"). Results are cached per summary and rate limited. Each plan has a monthly allowance of generated explanations (Free 10, Starter 100, Growth 500, Pro 2,000; saved results are not counted); when it is used up the response is a plain message with the reset date instead of an explanation. The explanation is generated text that describes page behavior and can be wrong; it does not establish emotion or a certain cause. ${UNTRUSTED}`,
+    description: `Explains the snags (pile-ups, no-shows and misfires) for one heatmap cohort, or for one element in it. Returns a short explanation with the evidence counts, possible causes, changes to try and what to check in recordings, plus the exact aggregated summary that was sent to OpenAI to write it. Only aggregated counts leave Hoot Lens: no recordings, page text or visitor identifiers. Refused with 403 unless the project owner turned on AI explanations in Settings. Falls back to rule-based text if the model is unavailable (status "fallback"). Results are cached per summary and rate limited. Generated explanations use the account's current monthly allowance; saved results are not counted. When the allowance is used, the response reports that state and a valid reset date when available; saved results remain available. The explanation is generated text that describes page behavior and can be wrong; it does not establish emotion or a certain cause. ${UNTRUSTED}`,
     input: z.object({
       projectId: projectArg,
       cohortKey: z.string().min(1).max(2000).describe('The cohort key exactly as heatmaps and findings return it'),
@@ -532,12 +532,17 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
     }),
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   }, async ({ projectId, cohortKey, selector }, t) => {
-    // Explanations call a language model, which can take longer than a read. 402 means the monthly allowance is used up: a known state, not a failure.
+    // Explanations can take longer than a read. Only the known allowance code is a non-error state.
     const answer = await t.post(`/v1/projects/${projectId}/explanations`, { cohortKey, ...(selector ? { selector } : {}) }, { timeoutMs: 45000, accept: [402] });
-    if (answer.status === 402) {
-      const message = typeof answer.body.error === 'string' ? answer.body.error : 'This month\'s AI explanation allowance for your plan is used. Upgrade for more.';
+    if (answer.status === 402 && answer.body.code === 'ai_allowance') {
+      const resetsAt = answer.body.resetsAt;
+      const resetDate = typeof resetsAt === 'number' && Number.isSafeInteger(resetsAt) && resetsAt > 0 && resetsAt <= 8_640_000_000_000_000
+        ? new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(resetsAt))
+        : undefined;
+      const message = `The current AI explanation allowance is used.${resetDate ? ` It resets on ${resetDate}.` : ''} Saved results remain available.`;
       return out({ status: 'allowance_used', message }, undefined, message);
     }
+    if (answer.status === 402) throw new ToolError('Hoot Lens refused explanation generation (402). This response is not an AI allowance notification.', 'api_error', 402);
     return out(answer.body);
   });
 
