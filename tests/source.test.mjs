@@ -14,12 +14,64 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const cli = fileURLToPath(new URL('../dist/cli.mjs', import.meta.url));
 const cleanEnv = Object.fromEntries(['PATH', 'Path', 'SystemRoot', 'TEMP', 'TMP'].filter(key => process.env[key]).map(key => [key, process.env[key]]));
 
+test('the compiled explanation tool keeps allowance replies neutral and preserves other result states', { timeout: 30_000 }, async () => {
+  let scenario = { status: 402, body: { code: 'ai_allowance', error: 'Starter limit reached. Upgrade to Growth at https://example.test/checkout.', resetsAt: Date.UTC(2026, 10, 1) } };
+  const calls = [];
+  const api = createServer((request, response) => {
+    calls.push({ method: request.method, path: request.url });
+    response.setHeader('Content-Type', 'application/json');
+    if (request.url === '/v1/access') return response.end(JSON.stringify({ credential: { scopes: ['read'] } }));
+    if (request.url === '/v1/projects') return response.end(JSON.stringify({ projects: [{ id: 'proj_fixture', name: 'Synthetic fixture' }] }));
+    if (request.url === '/v1/projects/proj_fixture/explanations') return response.writeHead(scenario.status).end(JSON.stringify(scenario.body));
+    return response.writeHead(404).end('{}');
+  });
+  await new Promise(resolve => api.listen(0, '127.0.0.1', resolve));
+  const address = api.address();
+  assert.ok(address && typeof address === 'object');
+  const client = new Client({ name: 'compiled-allowance-fixture', version: '1' });
+  const transport = new StdioClientTransport({ command: process.execPath, args: [cli, '--toolsets', 'read'], cwd: root,
+    env: { ...cleanEnv, HOOTLENS_PAT: 'synthetic_compiled_allowance_fixture', HOOTLENS_API_URL: `http://127.0.0.1:${address.port}` }, stderr: 'pipe' });
+  try {
+    await client.connect(transport, { timeout: 5_000 });
+    const tools = (await client.listTools({ cursor: '' }, { timeout: 5_000 })).tools;
+    const description = tools.find(tool => tool.name === 'explain_snags').description;
+    assert.doesNotMatch(description, /starter|growth|pro 2|free 10|upgrade/i);
+    const call = () => client.callTool({ name: 'explain_snags', arguments: { projectId: 'proj_fixture', cohortKey: '["proj_fixture","/","b","r","v","desktop"]' } }, undefined, { timeout: 5_000 });
+    const first = await call();
+    assert.ok(!first.isError);
+    assert.deepEqual(first.structuredContent, { status: 'allowance_used', message: 'The current AI explanation allowance is used. It resets on November 1, 2026. Saved results remain available.' });
+    assert.doesNotMatch(JSON.stringify(first), /upgrade|starter|growth|checkout|example\.test/i);
+    for (const resetsAt of [undefined, '2026-11-01', -1, 1.5, 8_640_000_000_000_001]) {
+      scenario = { status: 402, body: { code: 'ai_allowance', error: 'Upgrade for more.', ...(resetsAt === undefined ? {} : { resetsAt }) } };
+      const result = await call();
+      assert.ok(!result.isError);
+      assert.deepEqual(result.structuredContent, { status: 'allowance_used', message: 'The current AI explanation allowance is used. Saved results remain available.' });
+    }
+    for (const status of ['generated', 'cached', 'fallback']) {
+      scenario = { status: 200, body: { status, explanation: { observation: 'Synthetic click evidence' } } };
+      const result = await call(); assert.ok(!result.isError); assert.deepEqual(result.structuredContent, scenario.body);
+    }
+    scenario = { status: 403, body: { error: 'AI explanations are turned off for this project' } };
+    const disabled = await call(); assert.equal(disabled.isError, true); assert.match(disabled.content[0].text, /AI explanations are turned off/);
+    scenario = { status: 402, body: { code: 'other_entitlement', error: 'Other entitlement refusal' } };
+    const unrelated = await call(); assert.equal(unrelated.isError, true); assert.equal(unrelated._meta['hootlens/error'].code, 'api_error');
+    assert.doesNotMatch(JSON.stringify(unrelated), /allowance_used/);
+    assert.equal(calls.filter(request => request.method === 'GET' && request.path === '/v1/projects').length, 1, 'the existing 403 helper confirms project access before explaining the refusal');
+    assert.ok(calls.every(request => (request.method === 'GET' && ['/v1/access', '/v1/projects'].includes(request.path)) || (request.method === 'POST' && request.path === '/v1/projects/proj_fixture/explanations')));
+  } finally {
+    await client.close(); api.closeAllConnections(); await new Promise(resolve => api.close(resolve));
+  }
+});
+
 test('the release sources match the recorded snapshot, including shared imports', async () => {
   const source = JSON.parse(await readFile(new URL('../docs/SOURCE.json', import.meta.url), 'utf8'));
   const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   const server = JSON.parse(await readFile(new URL('../server.json', import.meta.url), 'utf8'));
   assert.equal(source.version, '1.1.0');
   assert.equal(source.sourceCommit, '683b3ac9294e9db795607470dc632c13f79d68b8');
+  assert.equal(source.sourceUpdates.length, 1);
+  assert.equal(source.sourceUpdates[0].sourceCommit, 'a5e3b03ecdda1bf26390f5161350126470482b97');
+  assert.deepEqual(source.sourceUpdates[0].files, ['src/tools.ts', 'src/docs.generated.ts']);
   assert.equal(manifest.version, source.version);
   assert.equal(server.version, source.version);
   assert.equal(server.packages[0].version, source.version);

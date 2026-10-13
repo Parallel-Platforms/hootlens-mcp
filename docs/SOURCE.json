@@ -69,7 +69,7 @@
     "src/cli/oauth.ts": "a8c87311351c8df96d33566234a419f7ffe5413a66f5c253e71dc8df72ebce85",
     "src/cli/store.ts": "d690186c011daf052f893146e94108582e86613cbd357f97c9b8c98fcbfc6937",
     "src/credentials.ts": "128816a2471cce59a1f752772e9ad0c76897be322c174029051bae95406ccda9",
-    "src/docs.generated.ts": "9176c7f702da6b8cf58ceac418138e602063cf9a7d0063e7c3201c9d3673730e",
+    "src/docs.generated.ts": "cc587b969a9e2b9f2d83b772217e35dbde5ee16a9312f71963add69808eb2426",
     "src/errors.ts": "b686ece8d14720b778a150631eb413b44ffcb1a1bbbd8b3cafedcfe71732882d",
     "src/index.ts": "3a7175b644bdbde742f4ed027b3fd1865cf69a0b368877e480ed3ec83fce93dc",
     "src/instructions.ts": "6fd7c394608e8de4f596b04f094dab8a774c17704a57cc566c3da708ce4c426b",
@@ -81,8 +81,18 @@
     "src/server.ts": "bd3deaad9dd9575df34b38b41d146f100e47e79b23e2e7bb9a9aa8bdf9da5955",
     "src/stdio.ts": "4f996e1a695985fca776ec02957b03addc2a997d0c013c6d5865fc7541eef275",
     "src/stored.ts": "0e2873f4f255fc5d405e3f93686c6da1efd88670e05b99909016b42ccb41b8b3",
-    "src/tools.ts": "b7b037df7982e28d797817d4d3c9a444cdd3b13d0bb6a77bc7c2fa5031720d82",
+    "src/tools.ts": "0bddd9e288383f94463d044342f887ace54238b0a3cadeb2582cab2124e689f6",
     "src/toolsets.ts": "a590e46610818a055b9de79f1d9dee027824a7696f5cb29be1276018c6dc1ece",
     "src/version.ts": "60370d92d8aad7e07bdd4f3f6953e02664023f992c798ed38f2b2405dcdaa487"
-  }
+  },
+  "sourceUpdates": [
+    {
+      "description": "Neutral MCP explanation allowance metadata and responses, plus current ChatGPT setup documentation",
+      "sourceCommit": "a5e3b03ecdda1bf26390f5161350126470482b97",
+      "files": [
+        "src/tools.ts",
+        "src/docs.generated.ts"
+      ]
+    }
+  ]
 }
