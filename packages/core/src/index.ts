@@ -677,7 +677,10 @@ export interface HeatmapCohortSummary {
 export const cohortGroup = (cohort: Pick<HeatmapCohortSummary, 'group' | 'path'>): string => cohort.group ?? cohort.path;
 /** A concise visible label for a selected variant or an unsplittable historical aggregate. */
 export const cohortVariantLabel = (cohort: Pick<HeatmapCohortSummary, 'key' | 'variant' | 'variantScope'>): string =>
-  (cohort.variantScope ?? heatmapVariantScope(cohort.key)) === 'pooled' ? 'Historical pooled variants' : `Variant: ${cohort.variant || '(empty)'}`;
+  (cohort.variantScope ?? heatmapVariantScope(cohort.key)) === 'pooled' ? 'Historical pooled variants' : cohort.variant ? `Variant: ${cohort.variant}` : 'No variant recorded';
+/** Compare stored variant identity and scope, never a display label that could resemble a visitor-supplied value. */
+export const sameCohortVariant = (a: Pick<HeatmapCohortSummary, 'key' | 'variant' | 'variantScope'>, b: Pick<HeatmapCohortSummary, 'key' | 'variant' | 'variantScope'>): boolean =>
+  a.variant === b.variant && (a.variantScope ?? heatmapVariantScope(a.key)) === (b.variantScope ?? heatmapVariantScope(b.key));
 /** GET /v1/projects/:projectId/heatmaps */
 export interface HeatmapCohortList { cohorts: HeatmapCohortSummary[]; }
 export interface SelectorClicks { selector: string; /** Most recent readable element label, when the project's policy allows one. */ label?: string; /** Source file and line (`src/Pricing.tsx:42`) from the most recent click on this element in this cohort, when the site's build plugin stamped it. */ source?: string; /** The name the team gave this element, when it has one. It wins over `label`. */ name?: string;
