@@ -495,8 +495,8 @@ export function owlSignal(clicks: Click[]): { state: OwlState; label: string; ev
 export const VISIT_IDLE_MS = 30 * 60 * 1000;
 export const segmentDeviceClass = (s: Pick<Segment,'deviceClass'|'viewport'>): DeviceClass => s.deviceClass ?? deviceClass(s.viewport.width);
 /**
- * Heatmaps group by page group, release, page revision and device class. Locale and variant are
- * dimensions inside the cohort, not part of its key. Viewports are bucketed by device class so
+ * New heatmaps group by page group, release, page revision, variant and device class. Locale is
+ * a dimension inside the cohort. Viewports are bucketed by device class so
  * visitors with slightly different window sizes aggregate together. Revision changes only with
  * explicit page versions or data-hoot-region markers, never with viewport size.
  *
@@ -505,7 +505,15 @@ export const segmentDeviceClass = (s: Pick<Segment,'deviceClass'|'viewport'>): D
  */
 export function heatmapKey(s: GroupedSegment): string {
   if (s.group === undefined) return JSON.stringify([s.projectId,s.path,s.buildId,s.revision,s.variant,segmentDeviceClass(s)]);
-  return JSON.stringify([s.projectId,s.group,s.pageVersion ?? s.buildId,s.revision,segmentDeviceClass(s)]);
+  return JSON.stringify([s.projectId,s.group,s.pageVersion ?? s.buildId,s.revision,s.variant,segmentDeviceClass(s)]);
+}
+/** Five-part page-group keys are historical pooled variants. Their stored totals cannot be split retrospectively. */
+export function heatmapVariantScope(key: string): 'single' | 'pooled' {
+  try {
+    const value: unknown = JSON.parse(key);
+    if (Array.isArray(value) && value.length === 5 && value.slice(0, 4).every(part => typeof part === 'string') && deviceClassSchema.safeParse(value[4]).success) return 'pooled';
+  } catch { /* A malformed key is rejected by the API, not a historical cohort. */ }
+  return 'single';
 }
 export function aggregateHeatmap(recordings: Recording[], key: string) {
   const selected = recordings.filter(s => heatmapKey(s) === key);
@@ -657,14 +665,19 @@ export interface HeatmapCohortSummary {
   /** Set when the collector derived the page version from the page's content. Equal to `buildId`. */
   pageVersion?: string;
   revision: string;
-  /** Empty for page group cohorts, where variants are a dimension. Set on cohorts recorded before page groups. */
+  /** The selected variant. Empty on historical pooled page-group cohorts; see variantScope. */
   variant: string; deviceClass: DeviceClass;
+  /** Historical five-part keys pool variants. New six-part keys and pre-page-group keys name one variant. */
+  variantScope?: 'single' | 'pooled';
   sessions: number; segments: number; clicks: number; lastSeenAt: number;
   /** Language and variant breakdowns inside the cohort, most page views first, at most 21 each. */
   locales?: DimensionCount[]; variants?: DimensionCount[];
 }
 /** The page group of a cohort. A cohort recorded before page groups is a group of its own path. */
 export const cohortGroup = (cohort: Pick<HeatmapCohortSummary, 'group' | 'path'>): string => cohort.group ?? cohort.path;
+/** A concise visible label for a selected variant or an unsplittable historical aggregate. */
+export const cohortVariantLabel = (cohort: Pick<HeatmapCohortSummary, 'key' | 'variant' | 'variantScope'>): string =>
+  (cohort.variantScope ?? heatmapVariantScope(cohort.key)) === 'pooled' ? 'Historical pooled variants' : `Variant: ${cohort.variant || '(empty)'}`;
 /** GET /v1/projects/:projectId/heatmaps */
 export interface HeatmapCohortList { cohorts: HeatmapCohortSummary[]; }
 export interface SelectorClicks { selector: string; /** Most recent readable element label, when the project's policy allows one. */ label?: string; /** Source file and line (`src/Pricing.tsx:42`) from the most recent click on this element in this cohort, when the site's build plugin stamped it. */ source?: string; /** The name the team gave this element, when it has one. It wins over `label`. */ name?: string;

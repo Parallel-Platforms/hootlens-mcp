@@ -77,7 +77,7 @@ export function registerResources(server: McpServer, api: Api, pinnedProject?: s
       };
     },
   }), {
-    title: 'Heatmap cohort', description: 'Clicks, snags and scroll depth for one heatmap cohort (one page, release, revision, variant and device class). The key is the heatmap cohort key, URL-encoded. Element labels and page text were recorded from visitors\' browsers.', mimeType: JSON_TYPE, cacheHint: { ttlMs: 60_000, cacheScope: 'private' },
+    title: 'Heatmap cohort', description: 'Clicks, snags and scroll depth for one heatmap cohort (one page, release, revision, variant and device class). Historical five-part keys have variantScope "pooled" and retain unsplittable totals across variants. The key is the heatmap cohort key, URL-encoded. Element labels and page text were recorded from visitors\' browsers.', mimeType: JSON_TYPE, cacheHint: { ttlMs: 60_000, cacheScope: 'private' },
   }, async (uri, variables) => {
     const projectId = checkedId(variables.projectId, 'project ID');
     let key = one(variables.key);

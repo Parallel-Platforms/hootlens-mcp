@@ -27,7 +27,7 @@
     "packages/core/src/funnels.ts": "67744a847416d0e3feaff1f3df5271e0d55458f9dbdf5e45d5e5a38d2c51e15f",
     "packages/core/src/github.ts": "d16acf61c75bdd9b060416386498ca52e93ab041ede4aa3065f794da8e8c9cb6",
     "packages/core/src/impact.ts": "8e73d7fd0aaedc9c32952ff96e24fb76f6cc3537c187541007ed26be422181f8",
-    "packages/core/src/index.ts": "051cb691f996b67285692cd09e9c500d76f4c6a675ba48e0399730d3faf712f1",
+    "packages/core/src/index.ts": "eca994936059e6b67e4581cba94a4d2f4580338d9d047a41a62146a7982574d3",
     "packages/core/src/install-guides.ts": "a2438dc88aaaed5fb275285acec8ed65a0032569bdc23cf559267f6a47f61862",
     "packages/core/src/internal-traffic.ts": "8cbd26a5014e503715ad6e2132e90d6e7db92c37469da305beee4b8af2630ff9",
     "packages/core/src/issue-similarity.ts": "709548ab12de87c1ee646c0785130ad26f195cbfbcf1f74b06f8010c2740ed81",
@@ -59,7 +59,7 @@
     "packages/core/src/webhooks.ts": "c715a7a4d3c2b1baebc02f19e2175ca1ee9e1f36793904395bb5090a1fb64ddf",
     "server.json": "f068c24f163fe47b73adadf59aafa7eb971144f4c43bc41aae08f92fa8ac07e7",
     "src/api.ts": "8af2be38314cf65a83dfa5a9f01a5e5ef523aab0061659a63dae6a29a6fcb67c",
-    "src/apps.generated.ts": "fe4885c320715597545d0dab627093958432b9d2c4018e1b8a813d53b66a967f",
+    "src/apps.generated.ts": "d69e4c6115ec40a48c47e236c4d9d5f005d3e3ceaabddc5186171d2413984c74",
     "src/apps.ts": "4f97e67a44e1fb4f3e7ce41ba210cf9fdb510ceda94af599c50886ed37bf7f23",
     "src/cli.ts": "107ec4ddcbb85465ce1a1a8e9e5d295ee104f6d0fd9005f8b4201e09d8d10188",
     "src/cli/browser.ts": "a180b1ba6b0c559799485a250018543979d16977729917f4c7450c61a4180ee1",
@@ -69,19 +69,19 @@
     "src/cli/oauth.ts": "a8c87311351c8df96d33566234a419f7ffe5413a66f5c253e71dc8df72ebce85",
     "src/cli/store.ts": "d690186c011daf052f893146e94108582e86613cbd357f97c9b8c98fcbfc6937",
     "src/credentials.ts": "128816a2471cce59a1f752772e9ad0c76897be322c174029051bae95406ccda9",
-    "src/docs.generated.ts": "3ed6bd445e97f42a5b44d11e8045d6475653bdc7969b16dc60165edbd1be2fa7",
+    "src/docs.generated.ts": "d763e103e0e2c73f56ae54c1ec6a5c6b2efcc4e43876f7338846ce32fde04ab7",
     "src/errors.ts": "b686ece8d14720b778a150631eb413b44ffcb1a1bbbd8b3cafedcfe71732882d",
     "src/index.ts": "3a7175b644bdbde742f4ed027b3fd1865cf69a0b368877e480ed3ec83fce93dc",
-    "src/instructions.ts": "6fd7c394608e8de4f596b04f094dab8a774c17704a57cc566c3da708ce4c426b",
+    "src/instructions.ts": "8b8d8660444319b37e1fc522a025e3fdbb5cb53d4c919f922743e415b0124992",
     "src/pin.ts": "da4d3d46df917365343b318a1eeea96d2c75167d648178acb187a82ba69b32b6",
     "src/prompts.ts": "6fe994cdbe6f44e8dfc98c1bbf1ffe30368eafdb0357612d31b4a1c61675ae94",
-    "src/resources.ts": "774f92322ab600175e94a1f22ddf770c11c0c1c818ab711c9c13bbe5ff94c17c",
-    "src/schemas.ts": "38d86e46e94458ce186e4aca6409853d191933b23703e007609640c7144cc41e",
+    "src/resources.ts": "3560b90127530798a164803ae76ba366d595c4db1f54e9b5ca207ed2b0dbbaa2",
+    "src/schemas.ts": "e44589fbbb67894bab61ccdfb8f06a8a70e6ce44fcc7b312f0bd621a91c6ed40",
     "src/serve.ts": "a666ee23cfe91f2bdea97e7038711cd1c66ec00df2547a10c6d21293a312e0d2",
     "src/server.ts": "bd3deaad9dd9575df34b38b41d146f100e47e79b23e2e7bb9a9aa8bdf9da5955",
     "src/stdio.ts": "4f996e1a695985fca776ec02957b03addc2a997d0c013c6d5865fc7541eef275",
     "src/stored.ts": "0e2873f4f255fc5d405e3f93686c6da1efd88670e05b99909016b42ccb41b8b3",
-    "src/tools.ts": "08bb6fda33ab34765f1233271e26f1bf9167d2469d7ef7e3e7879426ab92039a",
+    "src/tools.ts": "03ace71f1c66444b716f76befff56fc7c05bb13453dd77f148d6344f1722cb50",
     "src/toolsets.ts": "a590e46610818a055b9de79f1d9dee027824a7696f5cb29be1276018c6dc1ece",
     "src/version.ts": "60370d92d8aad7e07bdd4f3f6953e02664023f992c798ed38f2b2405dcdaa487"
   },
@@ -107,6 +107,19 @@
         "src/apps.generated.ts",
         "src/apps.ts",
         "src/docs.generated.ts",
+        "src/tools.ts"
+      ]
+    },
+    {
+      "description": "Variant-separated cohort keys, truthful historical pooled metadata, and visible map labels",
+      "sourceCommit": "7651c22dfc77d499e6587ae971399a017be2441e",
+      "files": [
+        "packages/core/src/index.ts",
+        "src/apps.generated.ts",
+        "src/docs.generated.ts",
+        "src/instructions.ts",
+        "src/resources.ts",
+        "src/schemas.ts",
         "src/tools.ts"
       ]
     }
