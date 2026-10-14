@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "hootlens": {
+      "url": "https://mcp.hootlens.com/mcp?toolsets=read,replay"
+    }
+  }
+}

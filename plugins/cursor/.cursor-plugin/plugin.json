@@ -1,0 +1,17 @@
+{
+  "name": "hootlens",
+  "displayName": "Hoot Lens",
+  "version": "0.1.0",
+  "description": "Trace website snags to recorded visits, click maps and timed replay moments before changing code.",
+  "author": {
+    "name": "Parallel Platforms",
+    "email": "support@hootlens.com"
+  },
+  "homepage": "https://hootlens.com/guides/give-your-coding-agent-real-user-behavior-data/",
+  "repository": "https://github.com/Parallel-Platforms/hootlens-mcp",
+  "license": "MIT",
+  "keywords": ["hootlens", "analytics", "session-replay", "heatmaps", "website-debugging", "mcp"],
+  "logo": "assets/logo.svg",
+  "skills": "skills/",
+  "mcpServers": "mcp.json"
+}
