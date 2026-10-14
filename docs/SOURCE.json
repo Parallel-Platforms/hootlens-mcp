@@ -81,17 +81,23 @@
     "src/server.ts": "bd3deaad9dd9575df34b38b41d146f100e47e79b23e2e7bb9a9aa8bdf9da5955",
     "src/stdio.ts": "4f996e1a695985fca776ec02957b03addc2a997d0c013c6d5865fc7541eef275",
     "src/stored.ts": "0e2873f4f255fc5d405e3f93686c6da1efd88670e05b99909016b42ccb41b8b3",
-    "src/tools.ts": "0bddd9e288383f94463d044342f887ace54238b0a3cadeb2582cab2124e689f6",
+    "src/tools.ts": "500b47ddc14ab09456e48548d486efb09fe9794bdef49152613059881b45a12f",
     "src/toolsets.ts": "a590e46610818a055b9de79f1d9dee027824a7696f5cb29be1276018c6dc1ece",
     "src/version.ts": "60370d92d8aad7e07bdd4f3f6953e02664023f992c798ed38f2b2405dcdaa487"
   },
   "sourceUpdates": [
     {
-      "description": "Neutral MCP explanation allowance metadata and responses, plus current ChatGPT setup documentation",
+      "description": "Current ChatGPT custom-plugin setup documentation",
       "sourceCommit": "a5e3b03ecdda1bf26390f5161350126470482b97",
       "files": [
-        "src/tools.ts",
         "src/docs.generated.ts"
+      ]
+    },
+    {
+      "description": "Neutral allowance behavior and explicit MCP tool safety annotations",
+      "sourceCommit": "52547fccc0f7a92cfbb0f1be88ddc81ddab95b8d",
+      "files": [
+        "src/tools.ts"
       ]
     }
   ]

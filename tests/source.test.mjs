@@ -14,6 +14,62 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const cli = fileURLToPath(new URL('../dist/cli.mjs', import.meta.url));
 const cleanEnv = Object.fromEntries(['PATH', 'Path', 'SystemRoot', 'TEMP', 'TMP'].filter(key => process.env[key]).map(key => [key, process.env[key]]));
 
+test('compiled SDK discovery explicitly classifies every tool across toolsets and connection profiles', { timeout: 60_000 }, async () => {
+  const mutating = new Set(['create_site', 'start_setup', 'add_note', 'log_change', 'apply_settings_change', 'submit_issue', 'submit_issues', 'reply_issue', 'claim_issue', 'set_issue_status', 'update_issue']);
+  const external = new Set(['check_install', 'start_setup', 'check_setup', 'explain_snags']);
+  const calls = [];
+  const scopes = ['read', 'replay', 'annotate', 'configure', 'sites:create', 'triage'];
+  const api = createServer((request, response) => {
+    calls.push({ method: request.method, path: request.url });
+    response.setHeader('Content-Type', 'application/json');
+    if (request.url === '/v1/access' && request.method === 'GET') return response.end(JSON.stringify({
+      account: { id: 'synthetic-owner' }, credential: { kind: 'oauth', projects: 'all', scopes },
+      projects: [{ id: 'proj_fixture', role: 'owner', permissions: ['read', 'replay', 'tokens', 'member'] }],
+    }));
+    response.writeHead(404).end('{}');
+  });
+  await new Promise(resolve => api.listen(0, '127.0.0.1', resolve));
+  const address = api.address(); assert.ok(address && typeof address === 'object');
+  const toolsets = ['read', 'replay', 'annotate', 'configure', 'install', 'sites', 'feedback', 'issues'];
+  const profiles = [
+    ...toolsets.map(toolset => ({ name: `individual ${toolset}`, args: ['--toolsets', toolset] })),
+    { name: 'all', args: ['--toolsets', 'all'] },
+    { name: 'default', args: [] },
+    { name: 'read and replay', args: ['--toolsets', 'read,replay'] },
+    { name: 'pinned all', args: ['--toolsets', 'all', '--project', 'proj_fixture'] },
+  ];
+  try {
+    for (const profile of profiles) {
+      const client = new Client({ name: 'compiled-safety-fixture', version: '1' });
+      const transport = new StdioClientTransport({ command: process.execPath, args: [cli, ...profile.args], cwd: root,
+        env: { ...cleanEnv, HOOTLENS_PAT: 'synthetic_annotations_fixture', HOOTLENS_API_URL: `http://127.0.0.1:${address.port}` }, stderr: 'pipe' });
+      try {
+        await client.connect(transport, { timeout: 5_000 });
+        const tools = (await client.listTools({}, { timeout: 5_000 })).tools;
+        assert.ok(tools.some(tool => tool.name === 'whoami'), `${profile.name}: connection check is present`);
+        for (const tool of tools) {
+          assert.ok(tool.annotations, `${tool.name}: annotations are returned through the SDK`);
+          for (const flag of ['readOnlyHint', 'destructiveHint', 'openWorldHint']) {
+            assert.equal(Object.hasOwn(tool.annotations, flag), true, `${profile.name}: ${tool.name} owns ${flag}`);
+            assert.equal(typeof tool.annotations[flag], 'boolean', `${profile.name}: ${tool.name}.${flag} is boolean`);
+          }
+          assert.equal(tool.annotations.readOnlyHint, !mutating.has(tool.name), `${tool.name}: read/write classification`);
+          assert.equal(tool.annotations.destructiveHint, tool.name === 'apply_settings_change', `${tool.name}: destructive classification`);
+          assert.equal(tool.annotations.openWorldHint, external.has(tool.name), `${tool.name}: external-system classification`);
+        }
+        if (profile.name === 'all') {
+          assert.ok(tools.length >= 40, 'the compiled server offers every tool definition');
+          for (const name of [...mutating, ...external]) assert.ok(tools.some(tool => tool.name === name), `${name}: override is covered`);
+          assert.equal(tools.find(tool => tool.name === 'create_site').annotations.idempotentHint, true);
+          assert.equal(tools.find(tool => tool.name === 'explain_snags').annotations.idempotentHint, true);
+        }
+        if (profile.name === 'pinned all') assert.ok(!tools.some(tool => tool.name === 'create_site'), 'metadata does not widen pinned-site access');
+      } finally { await client.close(); }
+    }
+    assert.ok(calls.every(call => call.method === 'GET' && call.path === '/v1/access'), 'metadata discovery performs no tool action or customer-data read');
+  } finally { api.closeAllConnections(); await new Promise(resolve => api.close(resolve)); }
+});
+
 test('the compiled explanation tool keeps allowance replies neutral and preserves other result states', { timeout: 30_000 }, async () => {
   let scenario = { status: 402, body: { code: 'ai_allowance', error: 'Starter limit reached. Upgrade to Growth at https://example.test/checkout.', resetsAt: Date.UTC(2026, 10, 1) } };
   const calls = [];
@@ -69,9 +125,11 @@ test('the release sources match the recorded snapshot, including shared imports'
   const server = JSON.parse(await readFile(new URL('../server.json', import.meta.url), 'utf8'));
   assert.equal(source.version, '1.1.0');
   assert.equal(source.sourceCommit, '683b3ac9294e9db795607470dc632c13f79d68b8');
-  assert.equal(source.sourceUpdates.length, 1);
+  assert.equal(source.sourceUpdates.length, 2);
   assert.equal(source.sourceUpdates[0].sourceCommit, 'a5e3b03ecdda1bf26390f5161350126470482b97');
-  assert.deepEqual(source.sourceUpdates[0].files, ['src/tools.ts', 'src/docs.generated.ts']);
+  assert.deepEqual(source.sourceUpdates[0].files, ['src/docs.generated.ts']);
+  assert.equal(source.sourceUpdates[1].sourceCommit, '52547fccc0f7a92cfbb0f1be88ddc81ddab95b8d');
+  assert.deepEqual(source.sourceUpdates[1].files, ['src/tools.ts']);
   assert.equal(manifest.version, source.version);
   assert.equal(server.version, source.version);
   assert.equal(server.packages[0].version, source.version);
