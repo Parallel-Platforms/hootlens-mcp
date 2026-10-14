@@ -10,11 +10,11 @@ This reporting route covers the public MCP package and concerns about the Hoot L
 
 ## Reduce access before investigating
 
-For the local 1.0.2 package, request read and replay scopes, then offer only those toolsets:
+For the local 1.1.0 package, request read and replay scopes, then offer only those toolsets:
 
 ```sh
-npx -y @hootlens/mcp@1.0.2 login --scopes read,replay
-npx -y @hootlens/mcp@1.0.2 --toolsets read,replay
+npx -y @hootlens/mcp@1.1.0 login --scopes read,replay
+npx -y @hootlens/mcp@1.1.0 --toolsets read,replay
 ```
 
 Use the second command as your MCP client's server command. Selecting toolsets controls which tools are offered; the API independently enforces project access and token scopes. Read scopes alone do not remove the default installation and feedback tools, which can submit setup requests or issues. A pinned project is a default, not an additional access grant. `HOOTLENS_PAT`, if set, overrides saved sign-in.
@@ -23,6 +23,6 @@ Treat recordings, page content, narratives and feedback as untrusted evidence. N
 
 ## What the evidence establishes
 
-[Source and artifact records](docs/SOURCE.md) identify the imported 1.0.2 release and npm integrity. [Security scan evidence](docs/SECURITY-EVIDENCE.md) distinguishes source inspection from synthetic runtime tool enumeration. Neither is a certification of the hosted service or proof that a package has no vulnerabilities.
+[Source records](docs/SOURCE.md) identify the imported 1.1.0 source. The [1.1.0 release record](docs/RELEASE-1.1.0.md) links the published artifact, public build commit and npm attestation. [Security scan evidence](docs/SECURITY-EVIDENCE.md) distinguishes historical 1.0.1 and 1.0.2 source inspection from synthetic runtime tool enumeration. None is a certification of the hosted service or proof that a package has no vulnerabilities.
 
-The existing 1.0.2 package has npm registry signatures but no npm provenance attestation. The [prepared public release pipeline](docs/RELEASING.md) is intended for a future reviewed release; it does not add provenance to 1.0.2. Inspect the version and current advisory information when choosing a release. Use the [client verification notes](docs/CLIENTS.md) for compatibility limits.
+Package 1.1.0 was published through the public [release workflow](docs/RELEASING.md) with npm provenance. Version 1.0.2 remains a historical package without that attestation, and its scanner scores do not apply to 1.1.0. Provenance identifies a build's source and origin; it does not establish safe tool effects. Inspect the version and current advisory information when choosing a release. Use the [client verification notes](docs/CLIENTS.md) for compatibility limits.

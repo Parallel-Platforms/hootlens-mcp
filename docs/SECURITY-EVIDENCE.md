@@ -1,6 +1,6 @@
 # Security scan evidence, 10 October 2026
 
-The evidence below applies to published versions 1.0.1 and 1.0.2. The prepared 1.1.0 source has additional tools and is not covered by these historical scanner results; no new score or attestation is claimed.
+The evidence below applies to published versions 1.0.1 and 1.0.2. Published 1.1.0 has additional tools and is not covered by these historical scanner results; no new scanner score is claimed. Its separate [release record](RELEASE-1.1.0.md) links the npm provenance attestation.
 
 This is a bounded investigation of the local published package. It does not establish hosted authorization, production security, browser sign-in behavior, customer capture safety or compatibility with every client. [SECURITY-EVIDENCE.json](SECURITY-EVIDENCE.json) records selected fields from the actual scans; it is not a signed scanner certificate.
 
@@ -19,4 +19,4 @@ A separate runtime scan used the exact downloaded 1.0.2 npm tarball, independent
 
 The runtime scan read live tool/prompt/resource metadata, not implementation source or npm package metadata. Its 97 client score omits the source-only primitives and publisher-verification term, so it supplements the source scan and cannot replace its 93 score. Tool enumeration is not a test of every tool's effects. Lexical classification also misses some capabilities, so neither zero findings nor the moderate runtime label proves absence of risk. The runtime digest describes that particular acquired surface and command, including temporary execution paths; it is not a portable artifact identity.
 
-No source code, package version, npm settings or public listing was changed during the investigation. The [public release preparation](RELEASING.md) is a subsequent proposed way to establish provenance for a new reviewed version. It has not added provenance to 1.0.2 or refreshed MCPRush.
+No source code, package version, npm settings or public listing was changed during the 10 October investigation. The subsequent [public release workflow](RELEASING.md) published 1.1.0 with provenance on 14 October. That publication does not add provenance to 1.0.2, rescan 1.1.0 or establish that MCPRush refreshed its listing.
