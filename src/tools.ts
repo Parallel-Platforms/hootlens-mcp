@@ -530,7 +530,8 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
       cohortKey: z.string().min(1).max(2000).describe('The cohort key exactly as heatmaps and findings return it'),
       selector: z.string().min(1).max(300).optional().describe('A selector, as heatmaps and findings list it, to explain one element; omit to explain the page group'),
     }),
-    annotations: { ...readOnly, idempotentHint: true, openWorldHint: true },
+    // Generation uses account allowance; an expired or unsaved cache can charge a retry again.
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true, idempotentHint: false },
   }, async ({ projectId, cohortKey, selector }, t) => {
     // Explanations can take longer than a read. Only the known allowance code is a non-error state.
     const answer = await t.post(`/v1/projects/${projectId}/explanations`, { cohortKey, ...(selector ? { selector } : {}) }, { timeoutMs: 45000, accept: [402] });
@@ -763,13 +764,11 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
 
   tool('find_similar_issues', {
     toolset: 'feedback', title: 'Find similar issues before filing',
-    description: `Finds likely duplicates of an issue before it is filed. Takes the title (and optionally kind, projectId and the same context an issue carries) and returns up to 10 issues the key's creator can already see that look alike, each with a score from 0 to 1 and the reasons in plain words: shared title words, the same element, the same page or dashboard view, or the same heatmap, change, goal, funnel or visit. Matching is simple and explainable (normalized title words plus shared ids), not a search engine. Staff keys compare against the whole queue; every other key compares only against issues its creator reported, so other people's issues are not revealed. Nothing is filed. Limit: 60 checks an hour. ${ISSUE_UNTRUSTED}`,
+    description: `Finds likely duplicates of an issue before it is filed. Takes the title (and optionally projectId and matching context) and returns up to 10 issues the key's creator can already see that look alike, each with a score from 0 to 1 and the reasons in plain words: shared title words, the same element, the same page or dashboard view, or the same heatmap, change, goal, funnel or visit. Matching is simple and explainable (normalized title words plus shared ids), not a search engine. Staff keys compare against the whole queue; every other key compares only against issues its creator reported, so other people's issues are not revealed. Nothing is filed. Limit: 60 checks an hour. ${ISSUE_UNTRUSTED}`,
     input: z.object({
       title: z.string().min(1).max(140),
-      kind: z.enum(['bug', 'feature', 'question', 'feedback']).optional(),
-      body: z.string().max(10_000).optional().describe('Optional, not used for matching today'),
       projectId: id.optional(),
-      context: issueContextArg.optional(),
+      context: issueContextArg.omit({ trackerVersion: true }).optional(),
       limit: z.number().int().min(1).max(10).optional().describe('Matches to return, default 5'),
     }),
     annotations: { ...readOnly, idempotentHint: true },
