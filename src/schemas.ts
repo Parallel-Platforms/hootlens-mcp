@@ -13,6 +13,7 @@ const str = z.string();
 const num = z.number();
 const strings = z.array(z.string());
 const rows = (shape: z.ZodRawShape) => z.array(z.looseObject(shape));
+const variantFields = { variant: str.optional(), variantScope: z.enum(['single', 'pooled']).optional().describe('single: one selected variant; pooled: unsplittable historical five-part cohort') };
 const signalCounts = { clickCount: num.optional(), rageClickCount: num.optional(), deadClickCount: num.optional(), errorClickCount: num.optional() };
 
 export const projectSummary = open({
@@ -44,12 +45,12 @@ export const outputSchemas = {
   get_recording: result({ recording: open({ id: str.optional() }).optional(), events: z.array(z.unknown()).optional(), clicks: z.array(z.unknown()).optional(), tags: strings.optional(), notes: z.array(noteLike).optional() }),
   load_replay: result({ projectId: str, assetOrigin: str, recording: open({ id: str.optional(), path: str.optional(), deviceClass: str.optional() }), events: z.array(z.unknown()), errors: z.array(z.unknown()) }),
   add_note: result({ note: open({ id: str.optional(), text: str.optional(), offsetMs: num.optional() }) }),
-  review_findings: result({ segments: num.optional(), signal: z.unknown().optional(), sample: str.optional(), cohorts: rows({ key: str, clicks: num.optional(), frictionClicks: num.optional() }) }),
+  review_findings: result({ segments: num.optional(), signal: z.unknown().optional(), sample: str.optional(), cohorts: rows({ key: str, ...variantFields, clicks: num.optional(), frictionClicks: num.optional() }) }),
   list_errors: result({ from: str, to: str, recording: z.boolean(), errors: rows({ id: str, error: str, at: str.optional(), pageViews: num, visits: num, firstSeen: str, lastSeen: str, releases: z.array(z.unknown()), pageGroups: z.array(z.unknown()), deviceClasses: z.array(z.unknown()) }), moreNotShown: num.optional(), droppedOccurrences: num.optional(), note: str.optional() }),
   get_error: result({ id: str, error: str, at: str.optional(), mapped: z.boolean(), pageViews: num, visits: num, stack: rows({ frame: str, resolved: z.boolean().optional(), source: strings.optional() }), cohorts: z.array(z.unknown()), sourceMaps: str.optional() }),
   explain_snags: result({ status: str.optional(), message: str.optional(), explanation: z.unknown().optional() }),
-  list_heatmaps: result({ cohorts: rows({ key: str, path: str.optional(), deviceClass: str.optional(), sessions: num.optional(), clicks: num.optional(), versionLabel: str.optional() }) }),
-  get_heatmap: result({ key: str, path: str.optional(), deviceClass: str.optional(), selectors: rows({ selector: str, name: str.optional().describe('The name the team gave this element, when it has one'), clicks: num }).optional(), scrollDepths: z.array(num).optional(), grid: open({ cellSize: num, cells: z.array(z.unknown()) }).optional() }),
+  list_heatmaps: result({ cohorts: rows({ key: str, ...variantFields, path: str.optional(), deviceClass: str.optional(), sessions: num.optional(), clicks: num.optional(), versionLabel: str.optional() }) }),
+  get_heatmap: result({ key: str, ...variantFields, path: str.optional(), deviceClass: str.optional(), selectors: rows({ selector: str, name: str.optional().describe('The name the team gave this element, when it has one'), clicks: num }).optional(), scrollDepths: z.array(num).optional(), grid: open({ cellSize: num, cells: z.array(z.unknown()) }).optional() }),
   list_changes: result({ changes: rows({ id: str, at: num, title: str, pageGroup: str.optional(), createdBy: str.optional(), source: str.optional() }) }),
   log_change: result({ change: open({ id: str, at: num, title: str }) }),
   change_impact: result({ summary: str.optional() }),
