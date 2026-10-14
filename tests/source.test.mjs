@@ -15,7 +15,7 @@ const cli = fileURLToPath(new URL('../dist/cli.mjs', import.meta.url));
 const cleanEnv = Object.fromEntries(['PATH', 'Path', 'SystemRoot', 'TEMP', 'TMP'].filter(key => process.env[key]).map(key => [key, process.env[key]]));
 
 test('compiled SDK discovery explicitly classifies every tool across toolsets and connection profiles', { timeout: 60_000 }, async () => {
-  const mutating = new Set(['create_site', 'start_setup', 'add_note', 'log_change', 'apply_settings_change', 'submit_issue', 'submit_issues', 'reply_issue', 'claim_issue', 'set_issue_status', 'update_issue']);
+  const mutating = new Set(['create_site', 'start_setup', 'add_note', 'log_change', 'apply_settings_change', 'submit_issue', 'submit_issues', 'reply_issue', 'claim_issue', 'set_issue_status', 'update_issue', 'explain_snags']);
   const external = new Set(['check_install', 'start_setup', 'check_setup', 'explain_snags']);
   const calls = [];
   const scopes = ['read', 'replay', 'annotate', 'configure', 'sites:create', 'triage'];
@@ -61,13 +61,58 @@ test('compiled SDK discovery explicitly classifies every tool across toolsets an
           assert.ok(tools.length >= 40, 'the compiled server offers every tool definition');
           for (const name of [...mutating, ...external]) assert.ok(tools.some(tool => tool.name === name), `${name}: override is covered`);
           assert.equal(tools.find(tool => tool.name === 'create_site').annotations.idempotentHint, true);
-          assert.equal(tools.find(tool => tool.name === 'explain_snags').annotations.idempotentHint, true);
+          assert.equal(tools.find(tool => tool.name === 'explain_snags').annotations.idempotentHint, false);
         }
         if (profile.name === 'pinned all') assert.ok(!tools.some(tool => tool.name === 'create_site'), 'metadata does not widen pinned-site access');
       } finally { await client.close(); }
     }
     assert.ok(calls.every(call => call.method === 'GET' && call.path === '/v1/access'), 'metadata discovery performs no tool action or customer-data read');
   } finally { api.closeAllConnections(); await new Promise(resolve => api.close(resolve)); }
+});
+
+test('compiled SDK duplicate checks omit unused report details and preserve matching evidence', { timeout: 30_000 }, async () => {
+  const requests = [];
+  const api = createServer(async (request, response) => {
+    response.setHeader('Content-Type', 'application/json');
+    if (request.url === '/v1/access') return response.end(JSON.stringify({ credential: { scopes: ['read', 'replay'] } }));
+    if (request.url === '/v1/issues/similar' && request.method === 'POST') {
+      let raw = '';
+      for await (const chunk of request) raw += chunk;
+      requests.push(JSON.parse(raw));
+      return response.end(JSON.stringify({ matches: [], checked: 0, scope: 'your issues' }));
+    }
+    response.writeHead(404).end('{}');
+  });
+  await new Promise(resolve => api.listen(0, '127.0.0.1', resolve));
+  const address = api.address(); assert.ok(address && typeof address === 'object');
+  const client = new Client({ name: 'compiled-minimal-similarity-fixture', version: '1' });
+  const transport = new StdioClientTransport({ command: process.execPath, args: [cli, '--toolsets', 'feedback'], cwd: root,
+    env: { ...cleanEnv, HOOTLENS_PAT: 'synthetic_similarity_fixture', HOOTLENS_API_URL: `http://127.0.0.1:${address.port}` }, stderr: 'pipe' });
+  const context = {
+    pageUrl: 'https://synthetic.example/pricing', route: '/recordings', selector: '[data-hoot-id="buy"]',
+    elementKey: '[data-hoot-id="buy"]', hootId: 'buy', sourceLocation: 'src/Pricing.tsx:42',
+    cohortKey: '["proj_fixture","/pricing","b","r","v","desktop"]', changeId: 'change_fixture',
+    goalId: 'goal_fixture', funnelId: 'funnel_fixture', errorId: 'error_fixture',
+    recordingIds: ['recording_fixture'], sessionIds: ['session_fixture'], recordingId: 'recording_fixture', sessionId: 'session_fixture',
+  };
+  const probe = { title: 'Buy button does not respond', projectId: 'proj_fixture', context, limit: 3 };
+  try {
+    await client.connect(transport, { timeout: 5_000 });
+    const tool = (await client.listTools({}, { timeout: 5_000 })).tools.find(tool => tool.name === 'find_similar_issues');
+    assert.ok(tool);
+    const properties = tool.inputSchema.properties;
+    assert.ok(!Object.hasOwn(properties, 'body'));
+    assert.ok(!Object.hasOwn(properties, 'kind'));
+    assert.ok(!Object.hasOwn(properties.context.properties, 'trackerVersion'));
+    for (const field of Object.keys(context)) assert.ok(Object.hasOwn(properties.context.properties, field), `${field} remains available to the matcher`);
+    const result = await client.callTool({ name: 'find_similar_issues', arguments: {
+      ...probe, body: 'Synthetic report details that matching does not need', kind: 'bug',
+      context: { ...context, trackerVersion: 'unused-fixture-version' },
+    } }, undefined, { timeout: 5_000 });
+    assert.ok(!result.isError);
+    assert.deepEqual(requests, [probe], 'stale client fields never reach the API');
+    assert.deepEqual(result.structuredContent, { matches: [], checked: 0, scope: 'your issues' });
+  } finally { await client.close(); api.closeAllConnections(); await new Promise(resolve => api.close(resolve)); }
 });
 
 test('the compiled explanation tool keeps allowance replies neutral and preserves other result states', { timeout: 30_000 }, async () => {
@@ -126,9 +171,9 @@ test('the release sources match the recorded snapshot, including shared imports'
   assert.equal(source.version, '1.1.0');
   assert.equal(source.sourceCommit, '683b3ac9294e9db795607470dc632c13f79d68b8');
   assert.equal(source.sourceUpdates.length, 2);
-  assert.equal(source.sourceUpdates[0].sourceCommit, 'a5e3b03ecdda1bf26390f5161350126470482b97');
+  assert.equal(source.sourceUpdates[0].sourceCommit, 'cb4bbddb432716d02a0cfb4224823810f0fb8c3e');
   assert.deepEqual(source.sourceUpdates[0].files, ['src/docs.generated.ts']);
-  assert.equal(source.sourceUpdates[1].sourceCommit, '52547fccc0f7a92cfbb0f1be88ddc81ddab95b8d');
+  assert.equal(source.sourceUpdates[1].sourceCommit, 'cb4bbddb432716d02a0cfb4224823810f0fb8c3e');
   assert.deepEqual(source.sourceUpdates[1].files, ['src/tools.ts']);
   assert.equal(manifest.version, source.version);
   assert.equal(server.version, source.version);
