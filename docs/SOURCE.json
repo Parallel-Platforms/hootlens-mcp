@@ -59,8 +59,8 @@
     "packages/core/src/webhooks.ts": "c715a7a4d3c2b1baebc02f19e2175ca1ee9e1f36793904395bb5090a1fb64ddf",
     "server.json": "f068c24f163fe47b73adadf59aafa7eb971144f4c43bc41aae08f92fa8ac07e7",
     "src/api.ts": "8af2be38314cf65a83dfa5a9f01a5e5ef523aab0061659a63dae6a29a6fcb67c",
-    "src/apps.generated.ts": "5b0fcf4aef022f8190bc97ae3392ae2b786ab752a9fbd8c55e10612a6407b238",
-    "src/apps.ts": "ff85710a3177baa7c1c8014e46cfc25e8f59bab6221af54ad5a8a8cf4c48e52f",
+    "src/apps.generated.ts": "fe4885c320715597545d0dab627093958432b9d2c4018e1b8a813d53b66a967f",
+    "src/apps.ts": "4f97e67a44e1fb4f3e7ce41ba210cf9fdb510ceda94af599c50886ed37bf7f23",
     "src/cli.ts": "107ec4ddcbb85465ce1a1a8e9e5d295ee104f6d0fd9005f8b4201e09d8d10188",
     "src/cli/browser.ts": "a180b1ba6b0c559799485a250018543979d16977729917f4c7450c61a4180ee1",
     "src/cli/commands.ts": "4d8bf85747ce9e303778cd1419c54f5b6cff39b008a77515ee74633b9b8d1df7",
@@ -69,7 +69,7 @@
     "src/cli/oauth.ts": "a8c87311351c8df96d33566234a419f7ffe5413a66f5c253e71dc8df72ebce85",
     "src/cli/store.ts": "d690186c011daf052f893146e94108582e86613cbd357f97c9b8c98fcbfc6937",
     "src/credentials.ts": "128816a2471cce59a1f752772e9ad0c76897be322c174029051bae95406ccda9",
-    "src/docs.generated.ts": "71ba986504f1f5f94359615e4cd223abd5731a717e91cebea328433d047dc15e",
+    "src/docs.generated.ts": "3ed6bd445e97f42a5b44d11e8045d6475653bdc7969b16dc60165edbd1be2fa7",
     "src/errors.ts": "b686ece8d14720b778a150631eb413b44ffcb1a1bbbd8b3cafedcfe71732882d",
     "src/index.ts": "3a7175b644bdbde742f4ed027b3fd1865cf69a0b368877e480ed3ec83fce93dc",
     "src/instructions.ts": "6fd7c394608e8de4f596b04f094dab8a774c17704a57cc566c3da708ce4c426b",
@@ -81,7 +81,7 @@
     "src/server.ts": "bd3deaad9dd9575df34b38b41d146f100e47e79b23e2e7bb9a9aa8bdf9da5955",
     "src/stdio.ts": "4f996e1a695985fca776ec02957b03addc2a997d0c013c6d5865fc7541eef275",
     "src/stored.ts": "0e2873f4f255fc5d405e3f93686c6da1efd88670e05b99909016b42ccb41b8b3",
-    "src/tools.ts": "05df620b3113e8afdd3f15a7a9efaad680a7ac78ae7995a6d1b30ec690e78629",
+    "src/tools.ts": "08bb6fda33ab34765f1233271e26f1bf9167d2469d7ef7e3e7879426ab92039a",
     "src/toolsets.ts": "a590e46610818a055b9de79f1d9dee027824a7696f5cb29be1276018c6dc1ece",
     "src/version.ts": "60370d92d8aad7e07bdd4f3f6953e02664023f992c798ed38f2b2405dcdaa487"
   },
@@ -97,6 +97,16 @@
       "description": "Explicit safety flags, explanation cost and minimized duplicate-check inputs",
       "sourceCommit": "cb4bbddb432716d02a0cfb4224823810f0fb8c3e",
       "files": [
+        "src/tools.ts"
+      ]
+    },
+    {
+      "description": "Dedicated widget origin, explicit bounded recovery of omitted density, and visual click map guidance",
+      "sourceCommit": "3ab8815c4d695947a116d227cd487142e2efc604",
+      "files": [
+        "src/apps.generated.ts",
+        "src/apps.ts",
+        "src/docs.generated.ts",
         "src/tools.ts"
       ]
     }

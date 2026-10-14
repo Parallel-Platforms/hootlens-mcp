@@ -46,6 +46,9 @@ export const APP_ONLY_TOOL = 'load_replay';
 /** The only site the documents link to, for "Open in Hoot Lens". The directory submission lists this origin as an allowed link URI. */
 export const APP_LINK_ORIGIN = 'https://hootlens.com';
 
+/** Dedicated Hoot Lens origin used by ChatGPT to isolate this plugin's UI. The host still serves the HTML resource. */
+export const APP_UI_ORIGIN = 'https://mcp.hootlens.com';
+
 /** Tool metadata that points a host at a document. The flat key is the older spelling some hosts still read. */
 export const toolUiMeta = (app: AppName) => ({ ui: { resourceUri: APP_RESOURCES[app].uri }, 'ui/resourceUri': APP_RESOURCES[app].uri });
 /** Tool metadata for a tool only the documents call. */
@@ -65,7 +68,7 @@ export function appCsp(app: AppName, assetOrigin: string | undefined): { resourc
   } catch { return {}; }
 }
 
-const resourceMeta = (app: AppName, assetOrigin: string | undefined) => ({ ui: { csp: appCsp(app, assetOrigin), prefersBorder: false } });
+const resourceMeta = (app: AppName, assetOrigin: string | undefined) => ({ ui: { domain: APP_UI_ORIGIN, csp: appCsp(app, assetOrigin), prefersBorder: false } });
 
 /** Serves the documents as ui:// resources. `assetOrigin` is the origin of the signed asset proxy (the API). */
 export function registerApps(server: McpServer, options: { assetOrigin?: string | undefined }): void {
