@@ -69,7 +69,7 @@
     "src/cli/oauth.ts": "a8c87311351c8df96d33566234a419f7ffe5413a66f5c253e71dc8df72ebce85",
     "src/cli/store.ts": "d690186c011daf052f893146e94108582e86613cbd357f97c9b8c98fcbfc6937",
     "src/credentials.ts": "128816a2471cce59a1f752772e9ad0c76897be322c174029051bae95406ccda9",
-    "src/docs.generated.ts": "d763e103e0e2c73f56ae54c1ec6a5c6b2efcc4e43876f7338846ce32fde04ab7",
+    "src/docs.generated.ts": "0d52023137d03a1526578b0850d010bc7da5a4f4452bcd2ad44e3567b73d040e",
     "src/errors.ts": "b686ece8d14720b778a150631eb413b44ffcb1a1bbbd8b3cafedcfe71732882d",
     "src/index.ts": "3a7175b644bdbde742f4ed027b3fd1865cf69a0b368877e480ed3ec83fce93dc",
     "src/instructions.ts": "8b8d8660444319b37e1fc522a025e3fdbb5cb53d4c919f922743e415b0124992",
@@ -81,7 +81,7 @@
     "src/server.ts": "bd3deaad9dd9575df34b38b41d146f100e47e79b23e2e7bb9a9aa8bdf9da5955",
     "src/stdio.ts": "4f996e1a695985fca776ec02957b03addc2a997d0c013c6d5865fc7541eef275",
     "src/stored.ts": "0e2873f4f255fc5d405e3f93686c6da1efd88670e05b99909016b42ccb41b8b3",
-    "src/tools.ts": "03ace71f1c66444b716f76befff56fc7c05bb13453dd77f148d6344f1722cb50",
+    "src/tools.ts": "89785152d0ef8b2b1e1c607760b85858be5ea4d7a7b51454a8d4c3314fbbfd5f",
     "src/toolsets.ts": "a590e46610818a055b9de79f1d9dee027824a7696f5cb29be1276018c6dc1ece",
     "src/version.ts": "60370d92d8aad7e07bdd4f3f6953e02664023f992c798ed38f2b2405dcdaa487"
   },
@@ -129,6 +129,14 @@
       "files": [
         "packages/core/src/index.ts",
         "src/apps.generated.ts"
+      ]
+    },
+    {
+      "description": "Factual historical cohort description with reporting guidance retained in server instructions",
+      "sourceCommit": "34c9cb98c858174dd44bece40df6a3766722583a",
+      "files": [
+        "src/docs.generated.ts",
+        "src/tools.ts"
       ]
     }
   ]

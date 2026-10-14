@@ -170,7 +170,7 @@ test('the release sources match the recorded snapshot, including shared imports'
   const server = JSON.parse(await readFile(new URL('../server.json', import.meta.url), 'utf8'));
   assert.equal(source.version, '1.1.0');
   assert.equal(source.sourceCommit, '683b3ac9294e9db795607470dc632c13f79d68b8');
-  assert.equal(source.sourceUpdates.length, 5);
+  assert.equal(source.sourceUpdates.length, 6);
   assert.equal(source.sourceUpdates[0].sourceCommit, 'cb4bbddb432716d02a0cfb4224823810f0fb8c3e');
   assert.deepEqual(source.sourceUpdates[0].files, ['src/docs.generated.ts']);
   assert.equal(source.sourceUpdates[1].sourceCommit, 'cb4bbddb432716d02a0cfb4224823810f0fb8c3e');
@@ -181,6 +181,8 @@ test('the release sources match the recorded snapshot, including shared imports'
   assert.deepEqual(source.sourceUpdates[3].files, ['packages/core/src/index.ts', 'src/apps.generated.ts', 'src/docs.generated.ts', 'src/instructions.ts', 'src/resources.ts', 'src/schemas.ts', 'src/tools.ts']);
   assert.equal(source.sourceUpdates[4].sourceCommit, '51e43cb1fa92e606ff590cfb323e3759df68bf7e');
   assert.deepEqual(source.sourceUpdates[4].files, ['packages/core/src/index.ts', 'src/apps.generated.ts']);
+  assert.equal(source.sourceUpdates[5].sourceCommit, '34c9cb98c858174dd44bece40df6a3766722583a');
+  assert.deepEqual(source.sourceUpdates[5].files, ['src/docs.generated.ts', 'src/tools.ts']);
   assert.equal(manifest.version, source.version);
   assert.equal(server.version, source.version);
   assert.equal(server.packages[0].version, source.version);
