@@ -1,0 +1,17 @@
+{
+  "name": "hootlens",
+  "owner": {
+    "name": "Parallel Platforms",
+    "email": "support@hootlens.com"
+  },
+  "metadata": {
+    "description": "Investigate recorded website behavior with Hoot Lens."
+  },
+  "plugins": [
+    {
+      "name": "hootlens",
+      "source": "plugins/cursor",
+      "description": "Trace website snags to recorded visits, click maps and timed replay moments."
+    }
+  ]
+}
