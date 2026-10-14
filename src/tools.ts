@@ -566,7 +566,7 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
     input: z.object({
       projectId: projectArg,
       key: z.string().min(1).max(2000).describe('The cohort key exactly as the heatmap cohort list returns it'),
-      maxCells: z.number().int().min(0).max(20000).optional().describe(`Densest grid cells to return, default ${DEFAULT_AGENT_CELLS}`),
+      maxCells: z.number().int().min(0).max(20000).optional().describe(`Densest grid cells to return, default ${DEFAULT_AGENT_CELLS}. Omit or use a positive value for a visual click map. 0 returns the element and scroll summaries without click density.`),
     }),
     annotations: readOnly,
   }, async ({ projectId, key, maxCells }, t) => {
