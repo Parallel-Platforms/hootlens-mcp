@@ -4,7 +4,7 @@ Trace a website snag to recorded visits, a click map and a timed replay moment b
 
 This package contains one Hoot Lens investigation skill and a hosted MCP connection restricted to the `read,replay` toolsets. No local server, shell hook, API key or package install is bundled. Plugin version `0.1.0` is separate from npm `@hootlens/mcp` version `1.1.0`; the hosted service releases separately too.
 
-`read,replay` describes the offered tool groups, not a guarantee of zero external effects. When site AI explanations are enabled, `explain_snags` can send aggregated counts to the explanation provider and consume the monthly project allowance. The first investigation below uses recorded findings and narratives without that tool.
+`read,replay` describes the offered tool groups, not a guarantee of zero external effects. When site AI explanations are enabled, `explain_snags` can send aggregated counts to the explanation provider and consume the site owner's monthly account AI allowance. The first investigation below uses recorded findings and narratives without that tool.
 
 ## Connect your site
 

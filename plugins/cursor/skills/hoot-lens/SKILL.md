@@ -7,7 +7,7 @@ description: Use when a user asks how website visitors behave, where they get st
 
 Investigate website behavior through the `hootlens` MCP connection. This plugin offers read and replay tools. It does not create sites, change settings, submit feedback or record a shipped change.
 
-The tool groups do not guarantee zero external effects. When site AI explanations are enabled, `explain_snags` can send aggregated counts to the explanation provider and consume the monthly project allowance. Prefer recorded findings and narratives first. Do not call it merely to establish a connection or finish the synthetic walkthrough; explain this consequence when proposing to use it.
+The tool groups do not guarantee zero external effects. When site AI explanations are enabled, `explain_snags` can send aggregated counts to the explanation provider and consume the site owner's monthly account AI allowance. Prefer recorded findings and narratives first. Do not call it merely to establish a connection or finish the synthetic walkthrough; explain this consequence when proposing to use it.
 
 ## Establish the evidence source
 

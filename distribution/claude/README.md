@@ -34,7 +34,7 @@ No password, bearer token, customer login or private recording is needed. Use th
 
 The existing listing uses the authenticated `/mcp` endpoint. For a manually configured investigation connection, the narrower `https://mcp.hootlens.com/mcp?toolsets=read,replay` selects read and replay tools. A toolset choice never expands an OAuth grant. Adding the optional site-creation permission is a separate owner-approved workflow.
 
-`read,replay` is a tool-group selection, not a guarantee of zero external effects. When site AI explanations are enabled, `explain_snags` can send aggregated counts to the explanation provider and consume the monthly project allowance. The synthetic first task above does not need that tool. Keep this caveat in listing copy and access guidance.
+`read,replay` is a tool-group selection, not a guarantee of zero external effects. When site AI explanations are enabled, `explain_snags` can send aggregated counts to the explanation provider and consume the site owner's monthly account AI allowance. The synthetic first task above does not need that tool. Keep this caveat in listing copy and access guidance.
 
 ## Source and review links
 
