@@ -149,7 +149,7 @@ function compactTraffic(body: TrafficBody) {
 }
 
 type Obj = Record<string, unknown>;
-const readOnly = { readOnlyHint: true, openWorldHint: false };
+const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
 const writes = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
 
 /** A link to a resource the client can read with resources/read, returned beside a tool's data. */
@@ -177,7 +177,7 @@ interface ToolDef<Shape extends z.ZodRawShape> {
   title: string;
   description: string;
   input: z.ZodObject<Shape>;
-  annotations?: Record<string, boolean>;
+  annotations: { readOnlyHint: boolean; destructiveHint: boolean; openWorldHint: boolean; idempotentHint?: boolean };
 }
 
 export interface ToolOptions {
@@ -383,7 +383,7 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
     toolset: 'install', scope: 'read', scoped: true, title: 'Check the install',
     description: `Checks whether Hoot Lens is installed and working on a project's site. Fetches the page (the project's first allowed site by default, or a url on one of its allowed sites) and reports whether the tag is in the HTML with the right project ID, any Content Security Policy problem, the detected platform, whether the tag has loaded in a visitor's browser, whether the first data has arrived and the most recent refused batches by reason, with a next step. Needs only the read scope: it can look only at the project's own allowed sites, not at an arbitrary address (the dashboard's own page checker takes any address and needs the owner). Limit: 10 checks a minute. A tag added by Google Tag Manager or JavaScript does not appear in the HTML; tagLoaded and dataReceived report whether visitors have loaded it. ${UNTRUSTED}`,
     input: z.object({ projectId: projectArg, url: z.string().url().max(2048).optional().describe('A page on one of the project\'s allowed sites. Default: the first allowed site\'s home page.') }),
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { ...readOnly, openWorldHint: true },
   }, async ({ projectId, url }, t) => out(await t.issue('POST', `/v1/projects/${projectId}/install-verify`, { body: url ? { url } : {} })));
 
   tool('start_setup', {
@@ -409,7 +409,7 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
       claimId: z.string().uuid().describe('The claimId returned when the setup started.'),
       pollToken: z.string().regex(/^hl_clp_[A-Za-z0-9_-]{43}$/).describe('The pollToken returned when the setup started. A secret.'),
     }),
-    annotations: { readOnlyHint: true, openWorldHint: true },
+    annotations: { ...readOnly, openWorldHint: true },
   }, async ({ claimId, pollToken }, t) => out(await t.get(`/v1/onboarding/claims/${claimId}`, { poll: pollToken })));
 
   tool('list_recordings', {
@@ -530,7 +530,7 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
       cohortKey: z.string().min(1).max(2000).describe('The cohort key exactly as heatmaps and findings return it'),
       selector: z.string().min(1).max(300).optional().describe('A selector, as heatmaps and findings list it, to explain one element; omit to explain the page group'),
     }),
-    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+    annotations: { ...readOnly, idempotentHint: true, openWorldHint: true },
   }, async ({ projectId, cohortKey, selector }, t) => {
     // Explanations can take longer than a read. Only the known allowance code is a non-error state.
     const answer = await t.post(`/v1/projects/${projectId}/explanations`, { cohortKey, ...(selector ? { selector } : {}) }, { timeoutMs: 45000, accept: [402] });
