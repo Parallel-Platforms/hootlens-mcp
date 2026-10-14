@@ -4,15 +4,15 @@ The Hoot Lens MCP server. It lets an AI assistant (Claude, Cursor, VS Code, Code
 
 You can run it two ways:
 
-- **Locally over stdio** with `npx -y @hootlens/mcp` (this package). For clients that can launch a stdio server.
+- **Locally over stdio** with `npx -y @hootlens/mcp@1.1.0` (this package). For clients that can launch a stdio server.
 - **Hosted** at `https://mcp.hootlens.com/mcp`, for clients that support remote MCP servers. Nothing to install; you sign in with Hoot Lens in your browser.
 
-This is the client guide from release 1.0.2. The hosted server can offer newer tools than this local package. Inspect tools/list on your actual connection; see the repository README for the current release boundary.
+The client configurations below are carried forward from the 1.0.2 guide and pinned to published 1.1.0. The [release record](RELEASE-1.1.0.md) identifies its source and provenance. The hosted service can release separately. Inspect `whoami` and `tools/list` on your actual connection. The dated verification notes below describe documentation checks, not a test of every client with 1.1.0.
 
 ## Requirements
 
 - Node.js 20 or newer (local server only).
-- A Hoot Lens account with at least one project.
+- A Hoot Lens account with a project to investigate your own recorded data. An owner with no projects can explicitly authorize [first-site creation](../README.md#create-a-site-through-an-authenticated-agent).
 
 ## Sign in
 
@@ -21,19 +21,19 @@ Pick one.
 **Browser sign-in (recommended).** Run this once:
 
 ```sh
-npx -y @hootlens/mcp login
+npx -y @hootlens/mcp@1.1.0 login
 ```
 
 Your browser opens Hoot Lens. Choose the projects and permissions to share, and approve. The sign-in is saved in the macOS Keychain, the Linux Secret Service (libsecret), or, where those are not available, a file (`~/.config/hootlens-mcp/credentials.json`, or `%APPDATA%\hootlens-mcp\credentials.json` on Windows). On POSIX systems the fallback uses owner-only mode flags. On Windows it relies on inherited profile ACLs; the package does not enforce an owner-only Windows ACL. Tokens are never printed.
 
 ```sh
-npx -y @hootlens/mcp whoami   # who is signed in, scopes, projects, token expiry
-npx -y @hootlens/mcp logout   # delete the saved sign-in and end it at the server
+npx -y @hootlens/mcp@1.1.0 whoami   # who is signed in, scopes, projects, token expiry
+npx -y @hootlens/mcp@1.1.0 logout   # delete the saved sign-in and end it at the server
 ```
 
 `login --scopes read,replay` asks for fewer permissions (default: `read replay annotate`). On a remote machine without a browser, `login` prints the link; open it on a machine that can reach the CLI on `127.0.0.1` (for example through an SSH port forward of the port it names).
 
-How long it lasts: access tokens last 1 hour and are renewed automatically. The renewal token lasts 30 days from its last use, so if you do not use the server for 30 days you must run `login` again. Disconnecting the app under Connected apps in the Hoot Lens dashboard ends the sign-in immediately. When a sign-in has ended, the server tells you to run `npx -y @hootlens/mcp login`.
+How long it lasts: access tokens last 1 hour and are renewed automatically. The renewal token lasts 30 days from its last use, so if you do not use the server for 30 days you must run `login` again. Disconnecting the app under Connected apps in the Hoot Lens dashboard ends the sign-in immediately. When a sign-in has ended, the server tells you to run `npx -y @hootlens/mcp@1.1.0 login`.
 
 **Access key.** In the dashboard, open Settings, AI assistant, and create a key for one project. Set it as `HOOTLENS_PAT` in the client's environment. When `HOOTLENS_PAT` is set it is used instead of the saved sign-in. A key belongs to one project and you can revoke it in the dashboard at any time. Prefer the browser sign-in on a personal machine and keys for CI or shared setups.
 
@@ -46,9 +46,9 @@ The commands below use the local server. Replace `YOUR_PROJECT_ID` if you want t
 Local:
 
 ```sh
-claude mcp add --transport stdio hootlens -- npx -y @hootlens/mcp
+claude mcp add --transport stdio hootlens -- npx -y @hootlens/mcp@1.1.0
 # with an access key instead of the saved sign-in, and a pinned project:
-claude mcp add --transport stdio --env HOOTLENS_PAT=hl_pat_... hootlens -- npx -y @hootlens/mcp --project YOUR_PROJECT_ID
+claude mcp add --transport stdio --env HOOTLENS_PAT=hl_pat_... hootlens -- npx -y @hootlens/mcp@1.1.0 --project YOUR_PROJECT_ID
 ```
 
 Hosted (then run `/mcp` inside Claude Code to sign in):
@@ -71,7 +71,7 @@ Local:
     "hootlens": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@hootlens/mcp"],
+      "args": ["-y", "@hootlens/mcp@1.1.0"],
       "env": { "HOOTLENS_PAT": "${env:HOOTLENS_PAT}" }
     }
   }
@@ -105,7 +105,7 @@ Local:
     "hootlens": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@hootlens/mcp"],
+      "args": ["-y", "@hootlens/mcp@1.1.0"],
       "env": { "HOOTLENS_PAT": "${input:hootlens-pat}" }
     }
   }
@@ -133,7 +133,7 @@ Local. Open Settings, Developer, Edit Config, and add to `claude_desktop_config.
   "mcpServers": {
     "hootlens": {
       "command": "npx",
-      "args": ["-y", "@hootlens/mcp"]
+      "args": ["-y", "@hootlens/mcp@1.1.0"]
     }
   }
 }
@@ -148,9 +148,9 @@ Hosted. Remote servers are not added in the JSON file. In Claude Desktop add a c
 Local:
 
 ```sh
-codex mcp add hootlens -- npx -y @hootlens/mcp
+codex mcp add hootlens -- npx -y @hootlens/mcp@1.1.0
 # with an access key:
-codex mcp add hootlens --env HOOTLENS_PAT=hl_pat_... -- npx -y @hootlens/mcp
+codex mcp add hootlens --env HOOTLENS_PAT=hl_pat_... -- npx -y @hootlens/mcp@1.1.0
 ```
 
 The same in `~/.codex/config.toml`:
@@ -158,7 +158,7 @@ The same in `~/.codex/config.toml`:
 ```toml
 [mcp_servers.hootlens]
 command = "npx"
-args = ["-y", "@hootlens/mcp"]
+args = ["-y", "@hootlens/mcp@1.1.0"]
 # env_vars = ["HOOTLENS_PAT"]   # forward the key from your shell instead of saving it here
 ```
 
@@ -173,7 +173,7 @@ then run `codex mcp login hootlens`.
 
 ### Other clients
 
-Any client that can start a stdio server: command `npx`, arguments `-y @hootlens/mcp`, optional environment `HOOTLENS_PAT`. Any client that supports remote servers over Streamable HTTP with OAuth: the URL `https://mcp.hootlens.com/mcp`. The hosted endpoint advertises its sign-in through standard OAuth discovery (RFC 9728 and RFC 8414) and accepts Client ID Metadata Documents and dynamic client registration.
+Any client that can start a stdio server: command `npx`, arguments `-y @hootlens/mcp@1.1.0`, optional environment `HOOTLENS_PAT`. Any client that supports remote servers over Streamable HTTP with OAuth: the URL `https://mcp.hootlens.com/mcp`. The hosted endpoint advertises its sign-in through standard OAuth discovery (RFC 9728 and RFC 8414) and accepts Client ID Metadata Documents and dynamic client registration.
 
 ## Hosted URL options
 
@@ -194,13 +194,16 @@ Toolsets group tools so an assistant is offered only what it needs. Set them wit
 
 | Toolset | What it offers |
 | --- | --- |
-| `read` | Sites (projects), visits, recording lists, narratives, heatmaps, findings, traffic, goals, funnels, changes, weekly summary. |
+| `read` | Sites (projects), visits, recording lists, narratives, heatmaps, findings, JavaScript errors, traffic, goals, funnels, changes, weekly summary. |
 | `replay` | Raw replay events and clicks of one recording. Needs the `replay` scope. |
 | `annotate` | Add notes to recordings and log changes. Needs the `annotate` scope. |
+| `configure` | Read settings, preview changes and apply exactly the preview. Privacy can only tighten. Needs the `configure` scope. |
 | `install` | Install tags per platform and the install checker. |
+| `sites` | Create sites within the owner's allowance. Requires explicitly approved OAuth `sites:create` for all sites and an unpinned connection. Personal access tokens cannot create sites. |
 | `feedback` | Report bugs and ideas to the Hoot Lens team and follow your reports. |
 | `issues` | Hoot Lens staff triage tools. Needs the `triage` scope. |
-| `default` | `read`, `replay`, `install`, `feedback`, plus `annotate` when your credential holds that scope. |
+| No selection | `read`, `replay`, `install`, `feedback`, plus `annotate`, `configure`, `sites` and `issues` when authorized. Site creation also requires an unpinned owner OAuth connection. |
+| `default` | Explicitly selects `read`, `replay`, `install`, `feedback`. |
 | `all` | Every toolset your credential can use. |
 
 A toolset your credential cannot use is not offered, and the server says so on stderr.
@@ -228,7 +231,7 @@ The server writes messages to stderr only. Standard output carries the MCP proto
 
 ## Troubleshooting
 
-- **"No credential"**: run `npx -y @hootlens/mcp login`, or set `HOOTLENS_PAT`.
+- **"No credential"**: run `npx -y @hootlens/mcp@1.1.0 login`, or set `HOOTLENS_PAT`.
 - **"The sign-in has ended"**: it was unused for 30 days or was disconnected in the dashboard. Run `login` again.
 - **A tool says a scope is missing**: the credential lacks that permission. Run `login --scopes read,replay,annotate`, or add the scope to your access key in the dashboard.
 - **A project is not found**: you did not share it when signing in, or you are not a member. Run `whoami` to list what the credential can reach.
@@ -236,11 +239,11 @@ The server writes messages to stderr only. Standard output carries the MCP proto
 - **No keychain on Linux (headless server, container)**: the sign-in falls back to the private file. Install `libsecret-tools` and run a Secret Service to use the keychain.
 - **`login` says all ports are in use**: login listens on 127.0.0.1 ports 28731 to 28735. Close what is using them and run `login` again.
 - **Behind a proxy or offline**: the server needs HTTPS access to the API (or `HOOTLENS_API_URL`).
-- **Show the version**: `npx -y @hootlens/mcp --version`.
+- **Show the version**: `npx -y @hootlens/mcp@1.1.0 --version`.
 
 ## Versions
 
-The package follows Semantic Versioning. Tool names and arguments do not change within a major version; new tools and optional arguments can appear in a minor version. See `CHANGELOG.md`. `npx -y @hootlens/mcp` resolves the latest npm dist-tag, which can change major version; pin with `npx -y @hootlens/mcp@1.0.2` if you need a fixed version. The server supports MCP protocol versions 2026-07-28 and 2025.
+The package follows Semantic Versioning. Tool names and arguments do not change within a major version; new tools and optional arguments can appear in a minor version. See `CHANGELOG.md` for the imported source changes and the [release record](RELEASE-1.1.0.md) for publication facts. Unversioned `npx -y @hootlens/mcp` resolves the latest npm dist-tag, which can change major version; the configurations here pin `@hootlens/mcp@1.1.0`. The server supports MCP protocol versions 2026-07-28 and 2025.
 
 ## Privacy
 

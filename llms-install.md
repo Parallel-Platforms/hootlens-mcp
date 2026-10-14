@@ -1,6 +1,6 @@
 # Installing the Hoot Lens MCP server
 
-These steps are for an AI agent (such as Cline) setting up Hoot Lens for a user.
+These steps are for an AI agent (such as Cline) setting up published Hoot Lens MCP 1.1.0 for a user. See the [versioned release record](docs/RELEASE-1.1.0.md) for source and provenance evidence.
 
 ## 1. Check requirements
 
@@ -12,13 +12,13 @@ These steps are for an AI agent (such as Cline) setting up Hoot Lens for a user.
 Run this once. It opens the browser so the user can choose which Hoot Lens projects and permissions to share:
 
 ```sh
-npx -y @hootlens/mcp@1.0.2 login --scopes read,replay
+npx -y @hootlens/mcp@1.1.0 login --scopes read,replay
 ```
 
 Confirm with:
 
 ```sh
-npx -y @hootlens/mcp@1.0.2 whoami
+npx -y @hootlens/mcp@1.1.0 whoami
 ```
 
 If the user prefers an access key instead, they create one in the Hoot Lens dashboard (Settings, AI assistant) and supply it through the client's private environment as `HOOTLENS_PAT`. Never invent a key, print it, or save it in committed source. A set `HOOTLENS_PAT` overrides the saved sign-in.
@@ -32,7 +32,7 @@ Add this entry to `cline_mcp_settings.json` under `mcpServers`:
   "mcpServers": {
     "hootlens": {
       "command": "npx",
-      "args": ["-y", "@hootlens/mcp@1.0.2", "--toolsets", "read,replay"],
+      "args": ["-y", "@hootlens/mcp@1.1.0", "--toolsets", "read,replay"],
       "disabled": false,
       "autoApprove": []
     }
@@ -47,7 +47,7 @@ With an access key instead of the browser sign-in:
   "mcpServers": {
     "hootlens": {
       "command": "npx",
-      "args": ["-y", "@hootlens/mcp@1.0.2", "--toolsets", "read,replay"],
+      "args": ["-y", "@hootlens/mcp@1.1.0", "--toolsets", "read,replay"],
       "env": { "HOOTLENS_PAT": "hl_pat_..." },
       "disabled": false,
       "autoApprove": []
@@ -77,10 +77,10 @@ To try Hoot Lens on sample data from a fictional app, with no sign-in, use the h
 
 ## 5. Verify
 
-On the hosted demo, call the `whoami` tool and confirm it identifies synthetic Fieldnote data. On local package 1.0.2, `whoami` is a CLI command, not an MCP tool: run `npx -y @hootlens/mcp@1.0.2 whoami` to check the saved sign-in. Then call `list_projects` through your actual MCP connection and pick the site that belongs to the user's repository. Inspect `tools/list`: hosted capabilities can be newer than this local release.
+On the hosted demo, call the `whoami` tool and confirm it identifies synthetic Fieldnote data. For the local package, run `npx -y @hootlens/mcp@1.1.0 whoami` to check the saved sign-in, then call the MCP `whoami` tool through the actual connection. Call `list_projects` and pick the site that belongs to the user's repository. Inspect `tools/list`: hosted and local releases can differ. These are configuration instructions, not a claim that every client has been tested.
 
 ## Troubleshooting
 
-- "Sign-in has ended": run `npx -y @hootlens/mcp login` again.
-- No projects listed: check `whoami` for the current sign-in and shared projects. Sign in again to share an existing site, and check current membership if access changed. Create a site at https://hootlens.com only if the account has none.
+- "Sign-in has ended": run `npx -y @hootlens/mcp@1.1.0 login --scopes read,replay` again.
+- No projects listed: check `whoami` for the current sign-in and shared projects. Sign in again to share an existing site, and check current membership if access changed. If the account has none, the owner can [explicitly authorize an agent to create a site](README.md#create-a-site-through-an-authenticated-agent), or create one at https://hootlens.com.
 - Full docs: https://hootlens.com/docs/MCP.md
