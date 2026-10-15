@@ -1,11 +1,11 @@
 {
   "package": "@hootlens/mcp",
-  "version": "1.1.0",
-  "releaseTag": "mcp-v1.1.0",
-  "sourceCommit": "683b3ac9294e9db795607470dc632c13f79d68b8",
+  "version": "1.2.0",
+  "releaseTag": "mcp-v1.2.0",
+  "sourceCommit": "8b249e9f387760869b9c86a49af983e4ba3bd36a",
   "publicationStatus": "prepared, not published",
   "files": {
-    "CHANGELOG.md": "468e02f7515dc03fb539ed6252bc0042663d77daa39cfb1993bf7af5b35666bc",
+    "CHANGELOG.md": "3b4fce24ef6f5a4b01e608935477144734bdbb704a45bac31fb1fda8c3faacac",
     "LICENSE": "9d354bbe13511ac5d485e33ffc25a8e330573a690d1a1a35925fb04b6068565a",
     "packages/core/package.json": "0f04ab90dc9e9c1dfc1572568a6b431baf5d5defdb760498246ace7f0f6c63c3",
     "packages/core/src/agent.ts": "6d68cb688d2c898e51b3e57d38c37f9d34146aa6577e224b70d99a22e1d67a39",
@@ -13,7 +13,7 @@
     "packages/core/src/automation-agents.ts": "c1410038d0fc4c31e9b3b98be40bfedd607be5f53c9fff0b9667c8703e35843f",
     "packages/core/src/automation.ts": "a47bb682e94bbefef9629d2dfd2fe1e3e1ab387d77e0e1eb39430b760f504fd7",
     "packages/core/src/billing.ts": "a8318bcde34a7dfd7600365e33db7d76cff75a54b3c06c7bfd9ef7dc639c2cdb",
-    "packages/core/src/business.ts": "55bb653eba15600da507ee0189d5a4d92d60897bb38dd4753be54679c0d18fd0",
+    "packages/core/src/business.ts": "358d50eff96ff162d770292bc6084ae888bf6de1c4109e5702eb60c4caedeebd",
     "packages/core/src/changes.ts": "679be25606119cee6fd58842ada6347f07fbaae9e5a42162ff2af10e7b105202",
     "packages/core/src/consent-regions.ts": "63d1f47575cb47270c1c047d2ab90c6c9e4326d355f48b7fa3affb916ddcc19d",
     "packages/core/src/deploys.ts": "7668eb367527ed3ae8fc19077f7359a563ba39d1606d71f85d3549864a6cdc56",
@@ -57,19 +57,20 @@
     "packages/core/src/trends.ts": "29c993f2752d22b4909aaf3c0d596fc008004a4adade06dc098078803839f22a",
     "packages/core/src/version-labels.ts": "af21429bbb4f132eddce4c40fb3db4a2fcfd294fa4089e30adb28b0e56022f75",
     "packages/core/src/webhooks.ts": "c715a7a4d3c2b1baebc02f19e2175ca1ee9e1f36793904395bb5090a1fb64ddf",
-    "server.json": "f068c24f163fe47b73adadf59aafa7eb971144f4c43bc41aae08f92fa8ac07e7",
+    "server.json": "a196633871f650866e1e64ea8408449c7bba6be154c643a2286ba212079f1397",
     "src/api.ts": "8af2be38314cf65a83dfa5a9f01a5e5ef523aab0061659a63dae6a29a6fcb67c",
     "src/apps.generated.ts": "720024e0b33a874ac82a736b1ba63bc8499a6099ad21f70ad240a96f1d66aa7f",
     "src/apps.ts": "4f97e67a44e1fb4f3e7ce41ba210cf9fdb510ceda94af599c50886ed37bf7f23",
-    "src/cli.ts": "107ec4ddcbb85465ce1a1a8e9e5d295ee104f6d0fd9005f8b4201e09d8d10188",
+    "src/cli.ts": "e4b7c474144ffef993ecba737ddbb3dda6082b244fbdeb98aabf50be1370f63e",
     "src/cli/browser.ts": "a180b1ba6b0c559799485a250018543979d16977729917f4c7450c61a4180ee1",
-    "src/cli/commands.ts": "4d8bf85747ce9e303778cd1419c54f5b6cff39b008a77515ee74633b9b8d1df7",
+    "src/cli/commands.ts": "abbbb665d2d0bcb22e637ae740ba0a5f17099c41bf58a90e01b85a19356cdb44",
     "src/cli/constants.ts": "2834d0f5c4ea93628c29ff9aaa5f157603c410aa0170e32a7f130f619f801b5b",
+    "src/cli/doctor.ts": "8b2c1e792057796d63b394dfd6c78c8637d0ace7072421a8d8709d9449ae1cbc",
     "src/cli/login.ts": "ffd02e58df3af5642d033ef87bfb54c1485a7cb1254e36274d24c8338cfed8fd",
     "src/cli/oauth.ts": "a8c87311351c8df96d33566234a419f7ffe5413a66f5c253e71dc8df72ebce85",
-    "src/cli/store.ts": "d690186c011daf052f893146e94108582e86613cbd357f97c9b8c98fcbfc6937",
+    "src/cli/store.ts": "36988eb0327cbc4b13b4b58330ae02e3e68d7cf29290a51627f5c95bb8210473",
     "src/credentials.ts": "128816a2471cce59a1f752772e9ad0c76897be322c174029051bae95406ccda9",
-    "src/docs.generated.ts": "0d52023137d03a1526578b0850d010bc7da5a4f4452bcd2ad44e3567b73d040e",
+    "src/docs.generated.ts": "0dca11157cba85cd5ca0e11fdb1c17d42351f5996323def95543462510fd233b",
     "src/errors.ts": "b686ece8d14720b778a150631eb413b44ffcb1a1bbbd8b3cafedcfe71732882d",
     "src/index.ts": "3a7175b644bdbde742f4ed027b3fd1865cf69a0b368877e480ed3ec83fce93dc",
     "src/instructions.ts": "8b8d8660444319b37e1fc522a025e3fdbb5cb53d4c919f922743e415b0124992",
@@ -77,67 +78,12 @@
     "src/prompts.ts": "6fe994cdbe6f44e8dfc98c1bbf1ffe30368eafdb0357612d31b4a1c61675ae94",
     "src/resources.ts": "3560b90127530798a164803ae76ba366d595c4db1f54e9b5ca207ed2b0dbbaa2",
     "src/schemas.ts": "e44589fbbb67894bab61ccdfb8f06a8a70e6ce44fcc7b312f0bd621a91c6ed40",
-    "src/serve.ts": "a666ee23cfe91f2bdea97e7038711cd1c66ec00df2547a10c6d21293a312e0d2",
-    "src/server.ts": "bd3deaad9dd9575df34b38b41d146f100e47e79b23e2e7bb9a9aa8bdf9da5955",
+    "src/serve.ts": "4f8fe89286da64fd8be85556ae77294fa77437289106bc1fc23ab3315d367c88",
+    "src/server.ts": "202fdbf91a2c446eca0cd0d855ca6790731d39a85ba649b2dabfed372d4cb425",
     "src/stdio.ts": "4f996e1a695985fca776ec02957b03addc2a997d0c013c6d5865fc7541eef275",
     "src/stored.ts": "0e2873f4f255fc5d405e3f93686c6da1efd88670e05b99909016b42ccb41b8b3",
-    "src/tools.ts": "89785152d0ef8b2b1e1c607760b85858be5ea4d7a7b51454a8d4c3314fbbfd5f",
+    "src/tools.ts": "895f9674d50dcb0df6f07599fd43f0cb50dc0230be32db19a915539318042af7",
     "src/toolsets.ts": "a590e46610818a055b9de79f1d9dee027824a7696f5cb29be1276018c6dc1ece",
-    "src/version.ts": "60370d92d8aad7e07bdd4f3f6953e02664023f992c798ed38f2b2405dcdaa487"
-  },
-  "sourceUpdates": [
-    {
-      "description": "Generated tool reference for current explanation and duplicate-check contracts",
-      "sourceCommit": "cb4bbddb432716d02a0cfb4224823810f0fb8c3e",
-      "files": [
-        "src/docs.generated.ts"
-      ]
-    },
-    {
-      "description": "Explicit safety flags, explanation cost and minimized duplicate-check inputs",
-      "sourceCommit": "cb4bbddb432716d02a0cfb4224823810f0fb8c3e",
-      "files": [
-        "src/tools.ts"
-      ]
-    },
-    {
-      "description": "Dedicated widget origin, explicit bounded recovery of omitted density, and visual click map guidance",
-      "sourceCommit": "3ab8815c4d695947a116d227cd487142e2efc604",
-      "files": [
-        "src/apps.generated.ts",
-        "src/apps.ts",
-        "src/docs.generated.ts",
-        "src/tools.ts"
-      ]
-    },
-    {
-      "description": "Variant-separated cohort keys, truthful historical pooled metadata, and visible map labels",
-      "sourceCommit": "7651c22dfc77d499e6587ae971399a017be2441e",
-      "files": [
-        "packages/core/src/index.ts",
-        "src/apps.generated.ts",
-        "src/docs.generated.ts",
-        "src/instructions.ts",
-        "src/resources.ts",
-        "src/schemas.ts",
-        "src/tools.ts"
-      ]
-    },
-    {
-      "description": "Raw variant identity comparison, distinct empty labels, and wrapping metadata",
-      "sourceCommit": "51e43cb1fa92e606ff590cfb323e3759df68bf7e",
-      "files": [
-        "packages/core/src/index.ts",
-        "src/apps.generated.ts"
-      ]
-    },
-    {
-      "description": "Factual historical cohort description with reporting guidance retained in server instructions",
-      "sourceCommit": "34c9cb98c858174dd44bece40df6a3766722583a",
-      "files": [
-        "src/docs.generated.ts",
-        "src/tools.ts"
-      ]
-    }
-  ]
+    "src/version.ts": "ecd46b5685e043124a4e99d3fd1bd83059f1b395a261fe9798f040072e57d2b5"
+  }
 }

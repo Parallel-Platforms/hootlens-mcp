@@ -29,7 +29,7 @@ test('publication preserves package identity and omits all development and lifec
 test('release preparation verifies the full recorded source and version identity', async () => {
   const verified = await verifySource();
   assert.equal(verified.stagedManifest.version, verified.snapshot.version);
-  assert.equal(verified.snapshot.sourceCommit, '683b3ac9294e9db795607470dc632c13f79d68b8');
+  assert.equal(verified.snapshot.sourceCommit, '8b249e9f387760869b9c86a49af983e4ba3bd36a');
 });
 
 test('changed, extra and wrong-version source cannot prepare a release', async () => {

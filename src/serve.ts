@@ -16,7 +16,7 @@ const log = (message: string) => process.stderr.write(`[hootlens-mcp] ${message}
 export const USAGE = `hootlens-mcp ${MCP_PACKAGE_VERSION}
 
 Usage: hootlens-mcp [options]          run the MCP server on stdio
-       hootlens-mcp login|logout|whoami
+       hootlens-mcp login|logout|whoami|doctor
 
 Options:
   --project <id>       default projectId for tools (also HOOTLENS_PROJECT or a .hootlens.json file)

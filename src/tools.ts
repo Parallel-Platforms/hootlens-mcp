@@ -181,6 +181,7 @@ interface ToolDef<Shape extends z.ZodRawShape> {
 }
 
 export interface ToolOptions {
+  onToolResult?: ((name: string, value: unknown) => Promise<void>) | undefined;
   /** The origin recorded pages may load assets from (the signed asset proxy), named by the replay tool so a viewer can confine what it loads to it. */
   assetOrigin?: string | undefined;
   /** A project that projectId defaults to, so a person working in one project never has to name it. */
@@ -286,6 +287,10 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
           issue: async (method, path, o) => (await api.request(method, path, { ...(o?.query ? { query: o.query } : {}), ...(o?.body !== undefined ? { body: o.body } : {}), ...(o?.headers ? { headers: o.headers } : {}), context: context() })).body as Obj,
         };
         const result = await handler(args as z.infer<z.ZodObject<Shape>>, t);
+        if (options.onToolResult && outputSchemas[name].safeParse(result.value).success) {
+          // Observation failures must not replace a successful customer result.
+          try { await options.onToolResult(name, result.value); } catch { /* The hosted observer logs its own operational failure. */ }
+        }
         return { content: [{ type: 'text' as const, text: result.text ?? JSON.stringify(result.value) }, ...(result.links ?? []), ...(result.images ?? []).map(image => ({ type: 'image' as const, data: image.data, mimeType: image.mimeType })), ...(options.notice ? [{ type: 'text' as const, text: options.notice }] : [])], structuredContent: result.value,
           // The view needs the project of a result when the model named none (a pinned project). It travels in _meta, which the model does not read, so the text and the data are as they were.
           ...(name in APP_TOOLS && typeof args.projectId === 'string' ? { _meta: { 'com.hootlens/app': { projectId: args.projectId } } } : {}) };

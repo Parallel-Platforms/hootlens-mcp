@@ -6,8 +6,9 @@ import { DEFAULT_LOGIN_SCOPES, RELOGIN_COMMAND } from './constants.js';
 import { login } from './login.js';
 import { CliError, revokeToken, type Fetcher } from './oauth.js';
 import { createTokenStore, defaultStoreDeps, type TokenStore } from './store.js';
+import { runDoctor } from './doctor.js';
 
-export const COMMANDS = ['login', 'logout', 'whoami'] as const;
+export const COMMANDS = ['login', 'logout', 'whoami', 'doctor'] as const;
 export type Command = (typeof COMMANDS)[number];
 export const isCommand = (value: string | undefined): value is Command => COMMANDS.includes(value as Command);
 
@@ -23,9 +24,21 @@ export interface CliIo {
   clientId?: string;
   loginTimeoutMs?: number;
   sleep?: (ms: number) => Promise<void>;
+  cwd?: string;
+  /** Bound for injected diagnostic providers. Production uses ten seconds. */
+  doctorTimeoutMs?: number;
 }
 
 const HELP: Record<Command, string> = {
+  doctor: `Usage: hootlens-mcp doctor [--json] [--authenticated] [--project id] [--toolsets read,replay] [--trust-api origin]
+
+Checks public service identity, local sign-in availability, project selection and toolsets.
+--authenticated also checks existing access metadata. No token refresh, sign-in, grant change or recording read occurs.
+Read toolsets can expose explain_snags, which can use the owner's monthly account AI allowance when enabled. Doctor does not call tools.
+Credentials are sent only to the documented Hoot Lens API origins or loopback. Other APIs require an explicit matching --trust-api origin for this invocation.
+JSON uses schemaVersion 1, stable check codes and recovery instructions. Exit 0: checks passed, 1: failed check, 2: invalid configuration.
+Configuration checks alone do not prove authentication or a completed investigation.
+`,
   login: `Usage: hootlens-mcp login [--scopes read,replay,annotate,configure,sites:create]
 
 Signs in through your browser and saves the sign-in (macOS Keychain, Linux Secret Service, or a private file in your config directory).
@@ -63,6 +76,7 @@ function parseScopes(args: string[]): { scopes: string[] } | { error: string } {
 /** Runs login, logout or whoami. Returns the exit status. */
 export async function runCommand(command: Command, args: string[], io: CliIo): Promise<number> {
   if (args.includes('--help') || args.includes('-h')) { io.out(HELP[command]); return 0; }
+  if (command === 'doctor') return runDoctor(args, io);
   const fetcher = io.fetch ?? defaultFetch;
   const store = io.store ?? createTokenStore(defaultStoreDeps(io.env));
   const apiUrl = io.env.HOOTLENS_API_URL ?? DEFAULT_API_URL;
