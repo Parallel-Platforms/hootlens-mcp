@@ -1,0 +1,557 @@
+[
+  {
+    "name": "whoami",
+    "title": "Check the connection",
+    "toolset": "read",
+    "scope": null,
+    "annotations": {
+      "title": "Check the connection",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "list_projects",
+    "title": "List sites",
+    "toolset": "read",
+    "scope": null,
+    "annotations": {
+      "title": "List sites",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "create_site",
+    "title": "Create a site",
+    "toolset": "sites",
+    "scope": "sites:create",
+    "annotations": {
+      "title": "Create a site",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_install_snippet",
+    "title": "Get install tag",
+    "toolset": "install",
+    "scope": "read",
+    "annotations": {
+      "title": "Get install tag",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "check_install",
+    "title": "Check the install",
+    "toolset": "install",
+    "scope": "read",
+    "annotations": {
+      "title": "Check the install",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "start_setup",
+    "title": "Start setup for a site",
+    "toolset": "install",
+    "scope": null,
+    "annotations": {
+      "title": "Start setup for a site",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "check_setup",
+    "title": "Check a setup request",
+    "toolset": "install",
+    "scope": null,
+    "annotations": {
+      "title": "Check a setup request",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "list_recordings",
+    "title": "List recordings",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "List recordings",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "list_sessions",
+    "title": "List visits",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "List visits",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "list_segments",
+    "title": "List saved segments",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "List saved segments",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_traffic",
+    "title": "Get traffic",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "Get traffic",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_session_narrative",
+    "title": "Read a visit narrative",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "Read a visit narrative",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    },
+    "ui": {
+      "resourceUri": "ui://hootlens/replay"
+    }
+  },
+  {
+    "name": "get_recording",
+    "title": "Get raw recording events",
+    "toolset": "replay",
+    "scope": "replay",
+    "annotations": {
+      "title": "Get raw recording events",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "load_replay",
+    "title": "Load a replay for the viewer",
+    "toolset": "replay",
+    "scope": "replay",
+    "annotations": {
+      "title": "Load a replay for the viewer",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    },
+    "ui": {
+      "visibility": [
+        "app"
+      ]
+    }
+  },
+  {
+    "name": "add_note",
+    "title": "Add a note to a recording",
+    "toolset": "annotate",
+    "scope": "annotate",
+    "annotations": {
+      "title": "Add a note to a recording",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "review_findings",
+    "title": "Review findings",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "Review findings",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    },
+    "ui": {
+      "resourceUri": "ui://hootlens/findings"
+    }
+  },
+  {
+    "name": "explain_snags",
+    "title": "Explain snags",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "Explain snags",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "list_heatmaps",
+    "title": "List heatmap cohorts",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "List heatmap cohorts",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_heatmap",
+    "title": "Get a heatmap",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "Get a heatmap",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    },
+    "ui": {
+      "resourceUri": "ui://hootlens/heatmap"
+    }
+  },
+  {
+    "name": "list_changes",
+    "title": "List logged changes",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "List logged changes",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "log_change",
+    "title": "Log a change",
+    "toolset": "annotate",
+    "scope": "annotate",
+    "annotations": {
+      "title": "Log a change",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "change_impact",
+    "title": "Did the change help?",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "Did the change help?",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "list_goals",
+    "title": "List goals",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "List goals",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "list_funnels",
+    "title": "List funnels",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "List funnels",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_funnel",
+    "title": "Get funnel drop-off",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "Get funnel drop-off",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "weekly_summary",
+    "title": "Weekly summary",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "Weekly summary",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "suggest_pages_to_record",
+    "title": "Suggest pages to record",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "Suggest pages to record",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_site_settings",
+    "title": "Get site settings",
+    "toolset": "configure",
+    "scope": "configure",
+    "annotations": {
+      "title": "Get site settings",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "preview_settings_change",
+    "title": "Preview a settings change",
+    "toolset": "configure",
+    "scope": "configure",
+    "annotations": {
+      "title": "Preview a settings change",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "apply_settings_change",
+    "title": "Apply a previewed settings change",
+    "toolset": "configure",
+    "scope": "configure",
+    "annotations": {
+      "title": "Apply a previewed settings change",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "list_errors",
+    "title": "List JavaScript errors",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "List JavaScript errors",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_error",
+    "title": "Get a JavaScript error",
+    "toolset": "read",
+    "scope": "read",
+    "annotations": {
+      "title": "Get a JavaScript error",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "submit_issue",
+    "title": "Report an issue to Hoot Lens",
+    "toolset": "feedback",
+    "scope": null,
+    "annotations": {
+      "title": "Report an issue to Hoot Lens",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "submit_issues",
+    "title": "Report several issues to Hoot Lens",
+    "toolset": "feedback",
+    "scope": null,
+    "annotations": {
+      "title": "Report several issues to Hoot Lens",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "find_similar_issues",
+    "title": "Find similar issues before filing",
+    "toolset": "feedback",
+    "scope": null,
+    "annotations": {
+      "title": "Find similar issues before filing",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "list_my_issues",
+    "title": "List my reported issues",
+    "toolset": "feedback",
+    "scope": null,
+    "annotations": {
+      "title": "List my reported issues",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_issue",
+    "title": "Read an issue",
+    "toolset": "feedback",
+    "scope": null,
+    "annotations": {
+      "title": "Read an issue",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "reply_issue",
+    "title": "Reply to an issue",
+    "toolset": "feedback",
+    "scope": null,
+    "annotations": {
+      "title": "Reply to an issue",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "triage_queue",
+    "title": "Staff triage queue",
+    "toolset": "issues",
+    "scope": null,
+    "annotations": {
+      "title": "Staff triage queue",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "issue_feed",
+    "title": "Staff issue feed",
+    "toolset": "issues",
+    "scope": null,
+    "annotations": {
+      "title": "Staff issue feed",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "claim_issue",
+    "title": "Claim an issue",
+    "toolset": "issues",
+    "scope": null,
+    "annotations": {
+      "title": "Claim an issue",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "set_issue_status",
+    "title": "Set an issue status",
+    "toolset": "issues",
+    "scope": null,
+    "annotations": {
+      "title": "Set an issue status",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_issue_screenshot",
+    "title": "View an issue screenshot",
+    "toolset": "feedback",
+    "scope": null,
+    "annotations": {
+      "title": "View an issue screenshot",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "update_issue",
+    "title": "Update issue triage fields",
+    "toolset": "issues",
+    "scope": null,
+    "annotations": {
+      "title": "Update issue triage fields",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  }
+]

@@ -1,0 +1,867 @@
+{
+  "schemaVersion": 1,
+  "package": "@hootlens/mcp",
+  "version": "1.1.0",
+  "observedDate": "2026-10-14",
+  "artifact": {
+    "publicSource": "f06d28882ce38f9bce4d4b55d31c61189cc92415",
+    "tag": "mcp-v1.1.0",
+    "sha256": "3e1dcb8ff564df456f5394267d4c802890182f4127c409e1191205a20fc08cc7",
+    "npmIntegrity": "sha512-qzaQZ7am4Ib5IjTR+8YgDL5CMsAaB4YhoAwcPOfJSxb7aa9mm0BDni8TyL18KYjSbEVcBmu4zNsIiUlfPe3sKA==",
+    "signatureAndProvenanceVerification": "Reused successful cryptographic publication verification, not repeated by these offline scans",
+    "attestation": "https://registry.npmjs.org/-/npm/v1/attestations/@hootlens%2fmcp@1.1.0",
+    "publicationReceiptSha256": "44249f8921bbd1ca6175cfd8166e35be206b184ef54957584472f43217dd09ad"
+  },
+  "scanner": {
+    "name": "mcptrustchecker",
+    "version": "1.17.0",
+    "methodology": "mcptrustchecker-1.17",
+    "cliSha256": "347a0ef0ed422b5e78f173d83f5b10a96832d2bd78c93169b0a7678ef47adfc0",
+    "installIntegrity": "sha512-b/Ba+DYR1Cnr0Bc+1LCoMGzeaeQmF4eScMIhkRStd31XpLkqXY/86SmB0PiCAsNhDdAXgddeXPVQOF3MH8KOeQ==",
+    "installationScriptsDisabled": true
+  },
+  "sourceScan": {
+    "scannedAt": "2026-10-14T23:48:03.352Z",
+    "rawReportSha256": "80d1f71747126e4765ed2c6eda710e1aed987586676ecc456f35755684245b8c",
+    "methodology": "mcptrustchecker-1.17",
+    "coverage": {
+      "toolSurface": false,
+      "implementationSource": true,
+      "packageMetadata": true,
+      "liveTransport": false
+    },
+    "stats": {
+      "tools": 0,
+      "prompts": 0,
+      "resources": 0,
+      "findingsBySeverity": {
+        "critical": 0,
+        "high": 1,
+        "medium": 0,
+        "low": 0,
+        "info": 1
+      }
+    },
+    "score": {
+      "score": 94,
+      "threatScore": 100,
+      "grade": "A"
+    },
+    "scoreTerms": [
+      {
+        "term": "capability-exposure",
+        "level": "high",
+        "appliedPenalty": 6
+      },
+      {
+        "term": "coverage-honesty",
+        "level": "source",
+        "appliedPenalty": 0
+      }
+    ],
+    "surfaceDigest": "2dc22d3bf39daa3966da07121ef3ae7218597d0cc75600bd6ac9471b4c82a657",
+    "surfaceDigestLimit": "Acquisition-specific, includes local paths or command; not an artifact hash or portable identity",
+    "findings": [
+      {
+        "ruleId": "MTC-SRC-002",
+        "severity": "high",
+        "confidence": "strong",
+        "location": {
+          "kind": "server",
+          "name": "dist/cli.mjs"
+        },
+        "classification": "scanner capability observation, no threat penalty",
+        "sourceLine": 640,
+        "toolInput": false
+      },
+      {
+        "ruleId": "MTC-SRC-001",
+        "severity": "info",
+        "confidence": "heuristic",
+        "location": {
+          "kind": "server",
+          "name": "dist/cli.mjs"
+        },
+        "classification": "scanner capability observation, no threat penalty",
+        "sourceLine": 29309
+      }
+    ]
+  },
+  "runtimeScan": {
+    "scannedAt": "2026-10-14T23:52:28.742Z",
+    "rawReportSha256": "4e759e714d6156e5d12686cb8d630a582827b03209013810c6dd83c3617ab8fa",
+    "methodology": "mcptrustchecker-1.17",
+    "coverage": {
+      "toolSurface": true,
+      "implementationSource": false,
+      "packageMetadata": false,
+      "liveTransport": true
+    },
+    "stats": {
+      "tools": 44,
+      "prompts": 6,
+      "resources": 8,
+      "findingsBySeverity": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 0,
+        "info": 0
+      }
+    },
+    "score": {
+      "score": 97,
+      "threatScore": 100,
+      "grade": "A"
+    },
+    "scoreTerms": [
+      {
+        "term": "capability-exposure",
+        "level": "moderate",
+        "appliedPenalty": 3
+      },
+      {
+        "term": "coverage-honesty",
+        "level": "live",
+        "appliedPenalty": 0
+      }
+    ],
+    "surfaceDigest": "caf321a64b89d4e063889f945097929051a320c0c213f41086044ffbd7324890",
+    "surfaceDigestLimit": "Acquisition-specific, includes local paths or command; not an artifact hash or portable identity",
+    "findings": [
+      {
+        "ruleId": "MTC-FLOW-005",
+        "severity": "medium",
+        "confidence": "strong",
+        "location": {
+          "kind": "flow",
+          "name": "check_install \u2192 start_setup"
+        },
+        "classification": "scanner capability observation, no threat penalty"
+      },
+      {
+        "ruleId": "MTC-CAP-007",
+        "severity": "medium",
+        "confidence": "heuristic",
+        "location": {
+          "kind": "tool",
+          "name": "check_install",
+          "field": "inputSchema.properties.url"
+        },
+        "classification": "scanner capability observation, no threat penalty"
+      }
+    ]
+  },
+  "fixture": {
+    "api": "HTTP 127.0.0.1, fake bearer, no real identity or customer data",
+    "authority": "Synthetic OAuth response with read,replay,annotate,configure,sites:create,triage scopes; not an ordinary owner's grant",
+    "platform": "Windows, Node 22.18.0, MCP client SDK 2.3.1",
+    "runtimeScannerSdk": "@modelcontextprotocol/sdk 1.32.1",
+    "sourceScansExecuted": 1,
+    "runtimeScansExecuted": 1,
+    "profiles": [
+      {
+        "name": "owner-all",
+        "mode": "owner",
+        "args": [
+          "--toolsets",
+          "all"
+        ],
+        "toolCount": 44,
+        "tools": [
+          "whoami",
+          "list_projects",
+          "create_site",
+          "get_install_snippet",
+          "check_install",
+          "start_setup",
+          "check_setup",
+          "list_recordings",
+          "list_sessions",
+          "list_segments",
+          "get_traffic",
+          "get_session_narrative",
+          "get_recording",
+          "load_replay",
+          "add_note",
+          "review_findings",
+          "explain_snags",
+          "list_heatmaps",
+          "get_heatmap",
+          "list_changes",
+          "log_change",
+          "change_impact",
+          "list_goals",
+          "list_funnels",
+          "get_funnel",
+          "weekly_summary",
+          "suggest_pages_to_record",
+          "get_site_settings",
+          "preview_settings_change",
+          "apply_settings_change",
+          "list_errors",
+          "get_error",
+          "submit_issue",
+          "submit_issues",
+          "find_similar_issues",
+          "list_my_issues",
+          "get_issue",
+          "reply_issue",
+          "triage_queue",
+          "issue_feed",
+          "claim_issue",
+          "set_issue_status",
+          "get_issue_screenshot",
+          "update_issue"
+        ]
+      },
+      {
+        "name": "read-replay",
+        "mode": "owner",
+        "args": [
+          "--toolsets",
+          "read,replay"
+        ],
+        "toolCount": 22,
+        "tools": [
+          "whoami",
+          "list_projects",
+          "list_recordings",
+          "list_sessions",
+          "list_segments",
+          "get_traffic",
+          "get_session_narrative",
+          "get_recording",
+          "load_replay",
+          "review_findings",
+          "explain_snags",
+          "list_heatmaps",
+          "get_heatmap",
+          "list_changes",
+          "change_impact",
+          "list_goals",
+          "list_funnels",
+          "get_funnel",
+          "weekly_summary",
+          "suggest_pages_to_record",
+          "list_errors",
+          "get_error"
+        ]
+      },
+      {
+        "name": "pinned-all",
+        "mode": "owner",
+        "args": [
+          "--toolsets",
+          "all",
+          "--project",
+          "proj_fixture"
+        ],
+        "toolCount": 43,
+        "tools": [
+          "whoami",
+          "list_projects",
+          "get_install_snippet",
+          "check_install",
+          "start_setup",
+          "check_setup",
+          "list_recordings",
+          "list_sessions",
+          "list_segments",
+          "get_traffic",
+          "get_session_narrative",
+          "get_recording",
+          "load_replay",
+          "add_note",
+          "review_findings",
+          "explain_snags",
+          "list_heatmaps",
+          "get_heatmap",
+          "list_changes",
+          "log_change",
+          "change_impact",
+          "list_goals",
+          "list_funnels",
+          "get_funnel",
+          "weekly_summary",
+          "suggest_pages_to_record",
+          "get_site_settings",
+          "preview_settings_change",
+          "apply_settings_change",
+          "list_errors",
+          "get_error",
+          "submit_issue",
+          "submit_issues",
+          "find_similar_issues",
+          "list_my_issues",
+          "get_issue",
+          "reply_issue",
+          "triage_queue",
+          "issue_feed",
+          "claim_issue",
+          "set_issue_status",
+          "get_issue_screenshot",
+          "update_issue"
+        ]
+      },
+      {
+        "name": "pat-all",
+        "mode": "pat",
+        "args": [
+          "--toolsets",
+          "all"
+        ],
+        "toolCount": 33,
+        "tools": [
+          "whoami",
+          "list_projects",
+          "get_install_snippet",
+          "check_install",
+          "start_setup",
+          "check_setup",
+          "list_recordings",
+          "list_sessions",
+          "list_segments",
+          "get_traffic",
+          "get_session_narrative",
+          "get_recording",
+          "load_replay",
+          "review_findings",
+          "explain_snags",
+          "list_heatmaps",
+          "get_heatmap",
+          "list_changes",
+          "change_impact",
+          "list_goals",
+          "list_funnels",
+          "get_funnel",
+          "weekly_summary",
+          "suggest_pages_to_record",
+          "list_errors",
+          "get_error",
+          "submit_issue",
+          "submit_issues",
+          "find_similar_issues",
+          "list_my_issues",
+          "get_issue",
+          "reply_issue",
+          "get_issue_screenshot"
+        ]
+      },
+      {
+        "name": "unknown-all",
+        "mode": "unknown",
+        "args": [
+          "--toolsets",
+          "all"
+        ],
+        "toolCount": 38,
+        "tools": [
+          "whoami",
+          "list_projects",
+          "get_install_snippet",
+          "check_install",
+          "start_setup",
+          "check_setup",
+          "list_recordings",
+          "list_sessions",
+          "list_segments",
+          "get_traffic",
+          "get_session_narrative",
+          "get_recording",
+          "load_replay",
+          "add_note",
+          "review_findings",
+          "explain_snags",
+          "list_heatmaps",
+          "get_heatmap",
+          "list_changes",
+          "log_change",
+          "change_impact",
+          "list_goals",
+          "list_funnels",
+          "get_funnel",
+          "weekly_summary",
+          "suggest_pages_to_record",
+          "get_site_settings",
+          "preview_settings_change",
+          "apply_settings_change",
+          "list_errors",
+          "get_error",
+          "submit_issue",
+          "submit_issues",
+          "find_similar_issues",
+          "list_my_issues",
+          "get_issue",
+          "reply_issue",
+          "get_issue_screenshot"
+        ]
+      },
+      {
+        "name": "viewer-read",
+        "mode": "read",
+        "args": [
+          "--toolsets",
+          "read"
+        ],
+        "toolCount": 19,
+        "tools": [
+          "whoami",
+          "list_projects",
+          "list_recordings",
+          "list_sessions",
+          "list_segments",
+          "get_traffic",
+          "review_findings",
+          "explain_snags",
+          "list_heatmaps",
+          "get_heatmap",
+          "list_changes",
+          "change_impact",
+          "list_goals",
+          "list_funnels",
+          "get_funnel",
+          "weekly_summary",
+          "suggest_pages_to_record",
+          "list_errors",
+          "get_error"
+        ]
+      },
+      {
+        "name": "redirect-refused",
+        "mode": "redirect",
+        "args": [
+          "--toolsets",
+          "read"
+        ],
+        "toolCount": 20,
+        "tools": [
+          "whoami",
+          "list_projects",
+          "list_recordings",
+          "list_sessions",
+          "list_segments",
+          "get_traffic",
+          "get_session_narrative",
+          "review_findings",
+          "explain_snags",
+          "list_heatmaps",
+          "get_heatmap",
+          "list_changes",
+          "change_impact",
+          "list_goals",
+          "list_funnels",
+          "get_funnel",
+          "weekly_summary",
+          "suggest_pages_to_record",
+          "list_errors",
+          "get_error"
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "phase": "runtime-scan",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "runtime-scan",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "runtime-scan",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/projects"
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/projects"
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": {
+          "name": "Synthetic site",
+          "origins": [
+            "https://synthetic.example"
+          ],
+          "privacy": {
+            "preset": "balanced"
+          },
+          "consent": "required"
+        },
+        "idempotencyKey": "release-security-request-110"
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/projects/proj_created/install-snippet"
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "POST",
+        "path": "/v1/projects",
+        "body": {
+          "name": "Synthetic site",
+          "origins": [
+            "https://synthetic.example"
+          ],
+          "privacy": {
+            "preset": "balanced"
+          },
+          "consent": "required"
+        },
+        "idempotencyKey": "release-security-request-110"
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/projects/proj_created/install-snippet"
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "POST",
+        "path": "/v1/projects/proj_fixture/settings-changes/preview",
+        "body": {
+          "changes": {
+            "privacy": {
+              "preset": "strict"
+            }
+          }
+        }
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "POST",
+        "path": "/v1/projects/proj_fixture/settings-changes/apply",
+        "body": {
+          "token": "synthetic_preview_token_110"
+        }
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "POST",
+        "path": "/v1/projects/proj_fixture/settings-changes/preview",
+        "body": {
+          "changes": {
+            "privacy": {
+              "preset": "full"
+            }
+          }
+        }
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "POST",
+        "path": "/v1/projects/proj_fixture/settings-changes/apply",
+        "body": {
+          "token": "synthetic_expired_token_110"
+        }
+      },
+      {
+        "phase": "owner-all",
+        "mode": "owner",
+        "method": "POST",
+        "path": "/v1/projects/proj_fixture/settings-changes/apply",
+        "body": {
+          "token": "synthetic_stale_token_110"
+        }
+      },
+      {
+        "phase": "read-replay",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "read-replay",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "pinned-all",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "pinned-all",
+        "mode": "owner",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "pat-all",
+        "mode": "pat",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "pat-all",
+        "mode": "pat",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "unknown-all",
+        "mode": "unknown",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "unknown-all",
+        "mode": "unknown",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "viewer-read",
+        "mode": "read",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "viewer-read",
+        "mode": "read",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "viewer-read",
+        "mode": "read",
+        "method": "GET",
+        "path": "/v1/projects/outside/recordings"
+      },
+      {
+        "phase": "viewer-read",
+        "mode": "read",
+        "method": "GET",
+        "path": "/v1/projects"
+      },
+      {
+        "phase": "redirect-refused",
+        "mode": "redirect",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "redirect-refused",
+        "mode": "redirect",
+        "method": "GET",
+        "path": "/v1/access"
+      },
+      {
+        "phase": "redirect-refused",
+        "mode": "redirect",
+        "method": "GET",
+        "path": "/v1/projects/proj_fixture/recordings"
+      }
+    ],
+    "effects": {
+      "productionRequests": 0,
+      "realCredentials": 0,
+      "modelCalls": 0,
+      "emails": 0,
+      "cloudMutations": 0
+    }
+  },
+  "checks": {
+    "explicitAnnotations": "44 tools matched published source read/write, destructive and external-effect declarations",
+    "creation": "Validates origins, forwards stable idempotency key on two retries, balanced privacy, required consent, and not_checked installation/recording states",
+    "creationLimit": "Fixture deduplication is not proof of hosted atomicity, site-slot enforcement or a 24-hour retry window",
+    "settings": "Forwards previewed token exactly, preserves stricter privacy request and synthetic privacy/expired/stale refusals",
+    "authorizationLimit": "Fixture supplies authority. Only CLI surface filtering and API refusal forwarding are checked",
+    "redirect": "Loopback redirect sentinel received zero requests; transport reported refusal",
+    "readReplayEffectfulTools": [
+      "explain_snags"
+    ],
+    "allowance": "Enabled explanation generation can consume the site owner's monthly account AI allowance, shared across sites; no model request made"
+  },
+  "resources": {
+    "list": [
+      {
+        "name": "docs-install",
+        "uri": "hootlens://docs/install",
+        "mimeType": "text/markdown"
+      },
+      {
+        "name": "docs-tracker",
+        "uri": "hootlens://docs/tracker",
+        "mimeType": "text/markdown"
+      },
+      {
+        "name": "docs-api",
+        "uri": "hootlens://docs/api",
+        "mimeType": "text/markdown"
+      },
+      {
+        "name": "docs-mcp",
+        "uri": "hootlens://docs/mcp",
+        "mimeType": "text/markdown"
+      },
+      {
+        "name": "replay-viewer",
+        "uri": "ui://hootlens/replay",
+        "mimeType": "text/html;profile=mcp-app"
+      },
+      {
+        "name": "heatmap-viewer",
+        "uri": "ui://hootlens/heatmap",
+        "mimeType": "text/html;profile=mcp-app"
+      },
+      {
+        "name": "findings-viewer",
+        "uri": "ui://hootlens/findings",
+        "mimeType": "text/html;profile=mcp-app"
+      },
+      {
+        "name": "Synthetic release fixture",
+        "uri": "hootlens://projects/proj_fixture",
+        "mimeType": "application/json"
+      }
+    ],
+    "prompts": [
+      "weekly-review",
+      "investigate-page",
+      "did-it-help",
+      "fix-top-snag",
+      "log-change",
+      "install-check"
+    ],
+    "templates": [
+      "hootlens://projects/{projectId}",
+      "hootlens://projects/{projectId}/recordings/{recordingId}",
+      "hootlens://projects/{projectId}/heatmaps/{key}"
+    ],
+    "apps": [
+      {
+        "uri": "ui://hootlens/replay",
+        "mimeType": "text/html;profile=mcp-app",
+        "bytes": 308430,
+        "sha256": "69d233988772d5a787cec531b56a1fb60dda2f3f3913960f4ccc4968940d52cb",
+        "directNetworkPrimitives": false,
+        "absoluteHostStrings": [
+          "https://github.com",
+          "http://www.w3.org",
+          "https://hootlens.com",
+          "https://evilmartians.com",
+          "https://www.w3ctech.com"
+        ],
+        "metadataDomain": "https://mcp.hootlens.com",
+        "resourceDomains": [
+          "<fixture API origin>"
+        ],
+        "limit": "HTML and metadata read, not rendered; URL strings are not request observations"
+      },
+      {
+        "uri": "ui://hootlens/heatmap",
+        "mimeType": "text/html;profile=mcp-app",
+        "bytes": 307401,
+        "sha256": "3e4e000267814e84894a2906fcab9e3ebab56cb361b1b7fe570c9ecd82f3fc51",
+        "directNetworkPrimitives": false,
+        "absoluteHostStrings": [
+          "https://github.com",
+          "http://www.w3.org",
+          "https://hootlens.com",
+          "https://evilmartians.com",
+          "https://www.w3ctech.com"
+        ],
+        "metadataDomain": "https://mcp.hootlens.com",
+        "resourceDomains": [
+          "<fixture API origin>"
+        ],
+        "limit": "HTML and metadata read, not rendered; URL strings are not request observations"
+      },
+      {
+        "uri": "ui://hootlens/findings",
+        "mimeType": "text/html;profile=mcp-app",
+        "bytes": 21907,
+        "sha256": "c25b5a4a12a7741bbd150c98af9ff0d789f55d2194134bd9f2fdf307142e3c0c",
+        "directNetworkPrimitives": false,
+        "absoluteHostStrings": [
+          "http://www.w3.org",
+          "https://hootlens.com"
+        ],
+        "metadataDomain": "https://mcp.hootlens.com",
+        "resourceDomains": [],
+        "limit": "HTML and metadata read, not rendered; URL strings are not request observations"
+      }
+    ]
+  },
+  "closure": {
+    "profileSdkCloseEvents": 7,
+    "profileOwnedPidsAbsent": 7,
+    "runtimeScannerProcessClosed": true,
+    "allThreeWrapperProcessesClosed": true,
+    "loopbackFixturesClosed": true,
+    "scannerServerProcessCensus": "Not independently performed; vendor SDK finally-close relied upon"
+  },
+  "history": [
+    {
+      "attempt": 1,
+      "outcome": "Source scan exit0; Windows SYSTEMROOT omitted by case-sensitive wrapper env filter caused listen failure before runtime. Preserved closed wrapper exit1."
+    },
+    {
+      "attempt": 2,
+      "outcome": "Runtime scan, owner surface and write-path checks passed. Incorrect zero-effects read/replay assertion exposed explain_snags. Preserved closed wrapper exit1 and actual boundary finding."
+    },
+    {
+      "attempt": 3,
+      "outcome": "Only five unstarted profiles executed and passed. Earlier scans and successful checks reused; wrapper exit0 and managed closure observed."
+    }
+  ],
+  "proofs": {
+    "attempt-1/source-scan.exit.json": "e03895fd699a35e60158dd236f8f59d752ac9adba6ae00184d0f48cd4b91dca1",
+    "attempt-1/wrapper-result.json": "23f0fbd1ea2ac39913af0d6b831749dc2aff040b4dedaf6e5c00f3ec2f7259e5",
+    "attempt-2/runtime-scan.exit.json": "e03895fd699a35e60158dd236f8f59d752ac9adba6ae00184d0f48cd4b91dca1",
+    "attempt-2/run-receipt.json": "28b804bfdd9a3ad689d300835a0ad8e191a9a43bb9d3789cc488f022004876a9",
+    "attempt-2/wrapper-result.json": "9f247e0a15f720576333e67a0deef9bf38fa62379773f810b09b205d779a765c",
+    "attempt-3/run-receipt.json": "758df1fb8c8853eb0f041643a7f3ee402f3bc88b54fed8a12e117d3cf33c164f",
+    "attempt-3/wrapper-result.json": "b8add22dcabdfdca241285df6924af32b93b946c8808aaf062320f3614dd3814",
+    "helper-review.json": "65ba8d21fb283945e08bb35a77f29bdaeb50bc65138f3778815e302d111c6c48",
+    "continuation-helper-review.json": "a0fd3cbff9f68a9b420e391503ead85b55ad94075169e56fcb138098b99ec9c3",
+    "profiles-helper-review.json": "38409d8d025180f7a202b05771b48662b7c0781bcfdb55994c7b5ef0e7e09a23",
+    "invocation-v2.json": "4f4ec755f2eaec87371b3da00ba97f4cac7298c05bc3bc117a3a83c131961d6c",
+    "invocation-v3.json": "f338c16c36ac43effcacfeafcae4751a53a41ae78004923e392576cfcdf1bec4",
+    "invocation-v4.json": "36d5902f45c52dbba168d1eaf95c6e1246c53f5f7b14d8cc6191cd0290b3c990"
+  },
+  "limits": [
+    "Selected redacted report fields, not signed scanner certificates or a security certification",
+    "Offline source scan does not enumerate tools or independently verify provenance",
+    "Runtime scan reads metadata and does not inspect source or execute all tools",
+    "Published package and hosted service can release separately",
+    "Hosted authorization, tenant isolation, site allowance, capture privacy, retention and arbitrary-host enforcement were not tested",
+    "Browser sign-in, OS credential stores and client rendering were not exercised",
+    "Annotations, scopes and pins do not replace per-request API authorization",
+    "No directory score refresh or listing acceptance established"
+  ]
+}
