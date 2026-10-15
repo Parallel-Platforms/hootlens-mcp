@@ -2,7 +2,7 @@
   "package": "@hootlens/mcp",
   "version": "1.2.0",
   "releaseTag": "mcp-v1.2.0",
-  "sourceCommit": "b6601dabaa908de7fae5aab6a20d51d914d3a8e2",
+  "sourceCommit": "fd167a771f3b819ed6932e81a538fa346a80116a",
   "publicationStatus": "prepared, not published",
   "files": {
     "CHANGELOG.md": "b4b5d0cd759b2c56b13867175f00fd1ec24e4bc01d5a42258fa774e35e36ac41",
@@ -70,7 +70,7 @@
     "src/cli/oauth.ts": "a8c87311351c8df96d33566234a419f7ffe5413a66f5c253e71dc8df72ebce85",
     "src/cli/store.ts": "36988eb0327cbc4b13b4b58330ae02e3e68d7cf29290a51627f5c95bb8210473",
     "src/credentials.ts": "128816a2471cce59a1f752772e9ad0c76897be322c174029051bae95406ccda9",
-    "src/docs.generated.ts": "0dca11157cba85cd5ca0e11fdb1c17d42351f5996323def95543462510fd233b",
+    "src/docs.generated.ts": "3253fbd1c7f0045a491e1566e827bd8f26051f951ba4b62e2801caa2b8cf30b0",
     "src/errors.ts": "b686ece8d14720b778a150631eb413b44ffcb1a1bbbd8b3cafedcfe71732882d",
     "src/index.ts": "3a7175b644bdbde742f4ed027b3fd1865cf69a0b368877e480ed3ec83fce93dc",
     "src/instructions.ts": "8b8d8660444319b37e1fc522a025e3fdbb5cb53d4c919f922743e415b0124992",

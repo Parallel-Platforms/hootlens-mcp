@@ -169,7 +169,7 @@ test('the release sources match the recorded snapshot, including shared imports'
   const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   const server = JSON.parse(await readFile(new URL('../server.json', import.meta.url), 'utf8'));
   assert.equal(source.version, '1.2.0');
-  assert.equal(source.sourceCommit, 'b6601dabaa908de7fae5aab6a20d51d914d3a8e2');
+  assert.equal(source.sourceCommit, 'fd167a771f3b819ed6932e81a538fa346a80116a');
   assert.equal(source.sourceUpdates, undefined, 'This release imports one complete immutable source commit');
   assert.equal(Object.keys(source.files).length, 80);
   assert.ok(source.files['src/cli/doctor.ts']);

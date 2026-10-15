@@ -1,6 +1,6 @@
 # Source identity and synchronization
 
-This checkout prepares @hootlens/mcp 1.2.0 from immutable monorepo commit `b6601dabaa908de7fae5aab6a20d51d914d3a8e2`. [SOURCE.json](SOURCE.json) records SHA-256 hashes for all 80 tracked MCP/core source, registry, license and changelog files. Every inventory file comes from that one commit. Hashes normalize CRLF to LF. No private repository or credential is needed to build this checkout.
+This checkout prepares @hootlens/mcp 1.2.0 from immutable monorepo commit `fd167a771f3b819ed6932e81a538fa346a80116a`. [SOURCE.json](SOURCE.json) records SHA-256 hashes for all 80 tracked MCP/core source, registry, license and changelog files. Every inventory file comes from that one commit. Hashes normalize CRLF to LF. No private repository or credential is needed to build this checkout.
 
 The prepared release adds the bounded doctor command, read-only diagnostic credential lookup, a provider/account-allowance disclosure and Registry repository metadata. It also imports the existing server-owned result observation hook and shared business-report schemas from that commit. The stdio launcher supplies no observer, so this package does not enable hosted usage collection. No API implementation, credentials, environment file or customer recording is exported.
 
