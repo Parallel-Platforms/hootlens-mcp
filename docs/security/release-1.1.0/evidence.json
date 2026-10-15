@@ -696,7 +696,7 @@
   },
   "checks": {
     "explicitAnnotations": "44 tools matched published source read/write, destructive and external-effect declarations",
-    "creation": "Validates origins, forwards stable idempotency key on two retries, balanced privacy, required consent, and not_checked installation/recording states",
+    "creation": "Validates origins, forwards stable idempotency key on two identical requests (initial request and one retry), balanced privacy, required consent, and not_checked installation/recording states",
     "creationLimit": "Fixture deduplication is not proof of hosted atomicity, site-slot enforcement or a 24-hour retry window",
     "settings": "Forwards previewed token exactly, preserves stricter privacy request and synthetic privacy/expired/stale refusals",
     "authorizationLimit": "Fixture supplies authority. Only CLI surface filtering and API refusal forwarding are checked",
