@@ -2,7 +2,7 @@
 
 Give your coding agent evidence from website visits: recordings, click maps, funnels and recurring snags. Trace a finding to the page, release, device and recorded moment before proposing a fix.
 
-This checkout prepares `@hootlens/mcp` 1.2.0 with the new doctor command. The current published package is [1.1.0](https://www.npmjs.com/package/@hootlens/mcp/v/1.1.0), released on 14 October 2026 from the public [`mcp-v1.1.0` tag](https://github.com/Parallel-Platforms/hootlens-mcp/tree/mcp-v1.1.0). Issues and questions are welcome here.
+This repository contains the Hoot Lens MCP source for 1.2.0, including the doctor command. Check the [release records and procedure](docs/RELEASING.md) for publication and provenance. Version [1.1.0](https://www.npmjs.com/package/@hootlens/mcp/v/1.1.0) was released on 14 October 2026 from the public [`mcp-v1.1.0` tag](https://github.com/Parallel-Platforms/hootlens-mcp/tree/mcp-v1.1.0). Issues and questions are welcome here.
 
 [The 1.1.0 release record](docs/RELEASE-1.1.0.md) links npm provenance, the exact public source and the official MCP Registry entry. Provenance identifies the source and build, not a security certification. The [1.1.0 security evidence](docs/security/release-1.1.0/README.md) records bounded scans and synthetic permission checks. [Historical scan evidence](docs/SECURITY-EVIDENCE.md) remains specific to the versions it inspected. Neither transfers to prepared 1.2.0.
 
@@ -45,7 +45,14 @@ End the local sign-in with `npx -y @hootlens/mcp@1.1.0 logout`. Revoke a connect
 
 ## Check local setup with doctor
 
-Doctor is in this prepared 1.2.0 source. Published 1.1.0 does not include it. After building the checkout:
+Doctor requires 1.2.0 or a source build containing the command. Published 1.1.0 does not include it. In a release containing doctor:
+
+```sh
+npx -y @hootlens/mcp doctor --toolsets read,replay
+npx -y @hootlens/mcp doctor --authenticated --project YOUR_PROJECT_ID --toolsets read,replay --json
+```
+
+To check this source before publication, build the checkout and use its executable:
 
 ```sh
 node dist/cli.mjs doctor --toolsets read,replay
