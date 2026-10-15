@@ -1,5 +1,7 @@
 # Public MCP releases
 
+Version 1.2.0 is published with the doctor command, npm provenance and an active official MCP Registry entry. Its [versioned release record](RELEASE-1.2.0.md) binds the exact public source, workflow, attestation and verified artifact. The hosted service releases separately.
+
 Version 1.1.0 was published on 14 October 2026 through this public repository's GitHub Actions trusted publisher, with npm provenance. The [versioned release record](RELEASE-1.1.0.md) links the attestation, exact tag, successful workflow and official Registry entry. The old private-repository npm trusted publisher was retired after the successful release. Version 1.0.2 remains published without provenance and cannot be republished; public source hashes and validation runs do not add an attestation to it.
 
 The development root remains `private: true`. `npm run release:prepare` verifies the imported source snapshot, complete source inventory, package lock, registry identity and compiled version. It builds from this public checkout and stages only `dist/cli.mjs`, `package.json`, `README.md`, `LICENSE` and `CHANGELOG.md` under `.release/package`. An explicit manifest allowlist excludes development dependencies, workspaces and lifecycle scripts. The staged manifest retains `@hootlens/mcp`, `com.hootlens/mcp`, the public repository URL, the executable name and Node 20 requirement, and requires public access and provenance.
