@@ -2,6 +2,7 @@
  * The @hootlens/mcp package entry (bin: hootlens-mcp).
  *   hootlens-mcp [--project id] [--toolsets list]   run the MCP server on stdio
  *   hootlens-mcp login | logout | whoami            manage the saved sign-in
+ *   hootlens-mcp doctor [--json] [--authenticated]   diagnose without changing access
  *   hootlens-mcp --help | --version
  */
 import { isCommand, runCommand } from './cli/commands.js';

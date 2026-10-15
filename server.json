@@ -4,12 +4,13 @@
   "title": "Hoot Lens",
   "description": "Read Hoot Lens recordings, replays, heatmaps, funnels and findings with your own account.",
   "websiteUrl": "https://hootlens.com",
-  "version": "1.1.0",
+  "repository": { "url": "https://github.com/Parallel-Platforms/hootlens-mcp", "source": "github" },
+  "version": "1.2.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@hootlens/mcp",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
@@ -38,7 +39,7 @@
         },
         {
           "name": "HOOTLENS_TOOLSETS",
-          "description": "Comma separated toolsets to offer: read, replay, annotate, configure, install, sites, feedback, issues, default, all. Site creation requires explicitly approved OAuth sites:create permission.",
+          "description": "Comma separated toolsets to offer: read, replay, annotate, configure, sites, install, feedback, issues, default, all. Optional grants and account authority still apply.",
           "isRequired": false,
           "isSecret": false,
           "format": "string"

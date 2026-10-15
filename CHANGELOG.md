@@ -2,9 +2,19 @@
 
 All notable changes to `@hootlens/mcp` are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
-## [1.1.0] - Prepared 2026-10-12
+## [1.2.0] - Unreleased
 
-Publication is pending. This entry describes the reviewed source, not a published npm artifact.
+### Added
+
+- `doctor` checks the API's public readiness and OAuth identity, local credential availability, project selection and toolsets. `--authenticated` explicitly checks existing access metadata. It never refreshes or rewrites credentials, reads recordings, calls MCP tools or changes a grant.
+- `doctor --json` produces a bounded, redacted report with stable check codes and exit statuses. Custom HTTPS APIs require an explicit matching `--trust-api` before an authenticated check. Connection health and completed investigations are reported separately.
+- Read-tool diagnostics disclose conditional `explain_snags` provider and account AI allowance use.
+
+### Changed
+
+- Registry metadata now links the public repository and lists the optional configuration and site-creation toolsets.
+
+## [1.1.0] - 2026-10-14
 
 ### Added
 
@@ -46,7 +56,7 @@ First release on npm. The same server was available before as a single-file down
 - Prompts for common jobs and resources for the Hoot Lens documentation.
 - Structured output for tool results, alongside the text content.
 - `hootlens-mcp login`, `logout` and `whoami`: sign in with your browser (OAuth with PKCE) instead of creating an access key. The sign-in is stored in the macOS Keychain, the Linux Secret Service, or a private file, and renews itself.
-- Packaging as an npm package with a `hootlens-mcp` command, and no runtime dependencies. Historical packages did not carry npm provenance.
+- Packaging as an npm package with a `hootlens-mcp` command and no runtime dependencies. Historical 1.0.x packages did not carry npm provenance.
 
 ### Changed
 

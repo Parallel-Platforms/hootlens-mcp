@@ -168,21 +168,11 @@ test('the release sources match the recorded snapshot, including shared imports'
   const source = JSON.parse(await readFile(new URL('../docs/SOURCE.json', import.meta.url), 'utf8'));
   const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   const server = JSON.parse(await readFile(new URL('../server.json', import.meta.url), 'utf8'));
-  assert.equal(source.version, '1.1.0');
-  assert.equal(source.sourceCommit, '683b3ac9294e9db795607470dc632c13f79d68b8');
-  assert.equal(source.sourceUpdates.length, 6);
-  assert.equal(source.sourceUpdates[0].sourceCommit, 'cb4bbddb432716d02a0cfb4224823810f0fb8c3e');
-  assert.deepEqual(source.sourceUpdates[0].files, ['src/docs.generated.ts']);
-  assert.equal(source.sourceUpdates[1].sourceCommit, 'cb4bbddb432716d02a0cfb4224823810f0fb8c3e');
-  assert.deepEqual(source.sourceUpdates[1].files, ['src/tools.ts']);
-  assert.equal(source.sourceUpdates[2].sourceCommit, '3ab8815c4d695947a116d227cd487142e2efc604');
-  assert.deepEqual(source.sourceUpdates[2].files, ['src/apps.generated.ts', 'src/apps.ts', 'src/docs.generated.ts', 'src/tools.ts']);
-  assert.equal(source.sourceUpdates[3].sourceCommit, '7651c22dfc77d499e6587ae971399a017be2441e');
-  assert.deepEqual(source.sourceUpdates[3].files, ['packages/core/src/index.ts', 'src/apps.generated.ts', 'src/docs.generated.ts', 'src/instructions.ts', 'src/resources.ts', 'src/schemas.ts', 'src/tools.ts']);
-  assert.equal(source.sourceUpdates[4].sourceCommit, '51e43cb1fa92e606ff590cfb323e3759df68bf7e');
-  assert.deepEqual(source.sourceUpdates[4].files, ['packages/core/src/index.ts', 'src/apps.generated.ts']);
-  assert.equal(source.sourceUpdates[5].sourceCommit, '34c9cb98c858174dd44bece40df6a3766722583a');
-  assert.deepEqual(source.sourceUpdates[5].files, ['src/docs.generated.ts', 'src/tools.ts']);
+  assert.equal(source.version, '1.2.0');
+  assert.equal(source.sourceCommit, 'fd167a771f3b819ed6932e81a538fa346a80116a');
+  assert.equal(source.sourceUpdates, undefined, 'This release imports one complete immutable source commit');
+  assert.equal(Object.keys(source.files).length, 80);
+  assert.ok(source.files['src/cli/doctor.ts']);
   assert.equal(manifest.version, source.version);
   assert.equal(server.version, source.version);
   assert.equal(server.packages[0].version, source.version);
@@ -270,11 +260,46 @@ test('the compiled server gates account setup and preserves its retry and consen
 
 test('the standalone bundle reports the prepared version and CLI usage', async () => {
   const version = await run(process.execPath, [cli, '--version'], { cwd: root, env: cleanEnv, timeout: 10_000 });
-  assert.equal(version.stdout.trim(), '1.1.0');
+  assert.equal(version.stdout.trim(), '1.2.0');
   assert.equal(version.stderr, '');
   const help = await run(process.execPath, [cli, '--help'], { cwd: root, env: cleanEnv, timeout: 10_000 });
   assert.match(help.stdout, /login\|logout\|whoami/);
   assert.match(help.stdout, /HOOTLENS_PAT/);
+  const doctor = await run(process.execPath, [cli, 'doctor', '--help'], { cwd: root, env: cleanEnv, timeout: 10_000 });
+  assert.match(doctor.stdout, /--authenticated/);
+  assert.match(doctor.stdout, /--trust-api/);
+});
+
+test('the standalone doctor runs public probes without bearer and redacts invalid arguments', { timeout: 20_000 }, async () => {
+  const requests = [];
+  let origin;
+  const api = createServer((request, response) => {
+    requests.push({ path: request.url, auth: request.headers.authorization });
+    response.setHeader('Content-Type', 'application/json');
+    response.end(JSON.stringify(request.url === '/health' ? { ready: true }
+      : request.url === '/.well-known/oauth-protected-resource' ? { resource: `${origin}/mcp`, authorization_servers: [origin], scopes_supported: ['read', 'replay'] }
+      : { issuer: origin, authorization_endpoint: `${origin}/oauth/authorize`, token_endpoint: `${origin}/oauth/token`, code_challenge_methods_supported: ['S256'] }));
+  });
+  await new Promise(resolve => api.listen(0, '127.0.0.1', resolve));
+  origin = `http://127.0.0.1:${api.address().port}`;
+  try {
+    const result = await run(process.execPath, [cli, 'doctor', '--json', '--toolsets', 'read,replay'], { cwd: root, env: { ...cleanEnv, HOOTLENS_API_URL: origin, HOOTLENS_PAT: 'synthetic-doctor-secret' }, timeout: 15_000 });
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.packageVersion, '1.2.0');
+    assert.equal(report.ok, true);
+    assert.equal(report.authenticatedMetadataVerified, false);
+    assert.equal(report.investigationVerified, false);
+    assert.equal(requests.length, 3);
+    assert.ok(requests.every(request => !request.auth));
+    assert.doesNotMatch(result.stdout, /synthetic-doctor-secret/);
+    await assert.rejects(run(process.execPath, [cli, 'doctor', '--json', '--invalid', 'synthetic-doctor-secret'], { cwd: root, env: cleanEnv, timeout: 10_000 }), error => {
+      assert.equal(error.code, 2);
+      assert.equal(JSON.parse(error.stdout).checks[0].code, 'INVALID_OPTIONS');
+      assert.doesNotMatch(error.stdout, /synthetic-doctor-secret/);
+      return true;
+    });
+    assert.equal(requests.length, 3);
+  } finally { api.closeAllConnections(); await new Promise(resolve => api.close(resolve)); }
 });
 
 test('the built stdio server discovers read tools, defaults to a pinned project and returns API denial', { timeout: 30_000 }, async () => {
@@ -304,7 +329,7 @@ test('the built stdio server discovers read tools, defaults to a pinned project 
   const client = new Client({ name: 'public-source-fixture', version: '1.0.0' });
   try {
     await client.connect(transport, { timeout: 10_000 });
-    assert.equal(client.getServerVersion()?.version, '1.1.0');
+    assert.equal(client.getServerVersion()?.version, '1.2.0');
     const tools = await client.listTools({ cursor: '' }, { timeout: 5_000 });
     assert.ok(tools.tools.some(tool => tool.name === 'list_recordings'));
     assert.ok(!tools.tools.some(tool => ['add_note', 'log_change', 'configure', 'submit_issue'].includes(tool.name)));

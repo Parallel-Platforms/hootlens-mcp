@@ -189,7 +189,7 @@ export interface TokenStore {
 /** The account is the API origin, so one machine can hold a sign-in for production and for a staging API. */
 export const accountOf = (apiUrl: string) => new URL(apiUrl).origin;
 
-export function createTokenStore(deps: StoreDeps): TokenStore {
+export function createTokenStore(deps: StoreDeps, options: { migrateLegacy?: boolean } = {}): TokenStore {
   const keychain = deps.platform === 'darwin' ? macKeychain(deps) : deps.platform === 'linux' ? secretService(deps) : undefined;
   const file = fileBackend(deps);
   const readAccount = async (account: string) => {
@@ -211,6 +211,8 @@ export function createTokenStore(deps: StoreDeps): TokenStore {
       // and endpoints, so nobody has to sign in again. If saving fails, the old entry is left in place and still used.
       const legacy = await readAccount(legacyAccount);
       if (!legacy) return undefined;
+      // Diagnostics inspect the existing sign-in without moving or rewriting it.
+      if (options.migrateLegacy === false) return legacy;
       const moved: TokenSet = { ...legacy, apiUrl: DEFAULT_API_URL };
       try {
         await store.write(moved);

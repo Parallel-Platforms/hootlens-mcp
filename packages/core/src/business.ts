@@ -2,7 +2,16 @@ import { z } from 'zod';
 
 const count = z.number().int().nonnegative();
 export const businessCoverageSchema = z.object({ status: z.enum(['complete', 'partial', 'unavailable']), read: count, limit: count, note: z.string() });
-const conversion = z.object({ channel: z.string(), registered: count, ownedSite: count, acceptedData: count, paidActive: count });
+const conversion = z.object({ channel: z.string(), registered: count, ownedSite: count, acceptedData: count, paidActive: count, investigated: count.optional() });
+const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export const businessInvestigationReportSchema = z.object({
+  investigatingAccounts: count, investigationDays: count, firstObservedAccounts: count,
+  eligibleReturnAccounts: count, returnedAccounts: count, startedAt: z.number().finite().nonnegative().nullable(),
+  historyFrom: z.number().finite().nonnegative(), retentionDays: z.literal(90),
+  daily: z.array(z.object({ day, accounts: count })).max(30),
+  sources: z.array(z.object({ channel: z.string(), accounts: count })).max(2000),
+  clientAttribution: z.literal('unknown'),
+});
 export const businessReportSchema = z.object({
   generatedAt: z.number(), window: z.object({ from: z.number(), to: z.number(), days: z.literal(30) }),
   accounts: z.object({ registered: count, excluded: count, disabled: count, siteOwners: count }),
@@ -10,7 +19,8 @@ export const businessReportSchema = z.object({
   sites: z.object({ total: count, acceptedData: count, activeInWindow: count }),
   acquisition: z.object({ cohort: count, rows: z.array(conversion), attribution: z.literal('optional_self_reported'), note: z.string() }),
   activity: z.object({ activeAccounts: count, agentApiAccounts: count, accountDays: count, agentApiDays: count, observedFrom: z.number().nullable(), note: z.string() }),
-  coverage: z.object({ accounts: businessCoverageSchema, projects: businessCoverageSchema, billing: businessCoverageSchema, attribution: businessCoverageSchema, activity: businessCoverageSchema }),
+  investigations: businessInvestigationReportSchema.optional(),
+  coverage: z.object({ accounts: businessCoverageSchema, projects: businessCoverageSchema, billing: businessCoverageSchema, attribution: businessCoverageSchema, activity: businessCoverageSchema, investigations: businessCoverageSchema.optional() }),
   limitations: z.array(z.string()),
 });
 export type BusinessReport = z.infer<typeof businessReportSchema>;
@@ -26,6 +36,7 @@ export const businessAccountInsightSchema = z.object({
   createdAt: timestamp, lastSignInAt: timestamp, planStatus: businessPlanStatusSchema, acquisitionChannel: z.string().nullable(),
   sites: z.array(z.object({ id: z.string(), name: z.string(), hostnames: z.array(z.string()), createdAt: timestamp, lastConfigFetchAt: timestamp, lastCollectAt: timestamp })).max(2000),
   activity: z.object({ accountDays: count, agentApiDays: count, firstObservedAt: timestamp, lastObservedDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable() }),
+  investigations: z.object({ days: count, firstRetainedAt: timestamp, lastObservedDay: day.nullable() }).optional(),
   stage: z.enum(['registered', 'site_created', 'tracker_seen', 'data_accepted', 'evidence_read', 'unknown']),
 });
 export type BusinessAccountInsight = z.infer<typeof businessAccountInsightSchema>;

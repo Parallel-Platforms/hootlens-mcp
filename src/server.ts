@@ -17,6 +17,8 @@ export const MCP_SERVER_ICONS = [
 ];
 
 export interface ServerConfig {
+  /** Server-owned observation hook. Never configured by a remote caller and absent in the stdio package. */
+  onToolResult?: ((name: string, value: unknown) => Promise<void>) | undefined;
   /** Where the server runs, which decides how errors tell a person to sign in again. */
   surface: Surface;
   /** A project that projectId arguments default to. */
@@ -61,7 +63,7 @@ export function createHootLensServer(call: ApiFetch, config: ServerConfig): McpS
       'resources/templates/list': { ttlMs: HOUR_MS, cacheScope: 'private' },
     },
   });
-  registerTools(server, api, { assetOrigin: config.assetOrigin, pinnedProject: config.pinnedProject, toolsets, hide: config.hide ? new Set(config.hide) : undefined, notice: config.notice });
+  registerTools(server, api, { assetOrigin: config.assetOrigin, pinnedProject: config.pinnedProject, toolsets, hide: config.hide ? new Set(config.hide) : undefined, notice: config.notice, onToolResult: config.onToolResult });
   registerPrompts(server, toolsets, config.pinnedProject);
   registerResources(server, api, config.pinnedProject);
   registerApps(server, { assetOrigin: config.assetOrigin });
