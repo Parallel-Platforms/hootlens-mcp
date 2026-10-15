@@ -2,10 +2,10 @@
   "package": "@hootlens/mcp",
   "version": "1.2.0",
   "releaseTag": "mcp-v1.2.0",
-  "sourceCommit": "8b249e9f387760869b9c86a49af983e4ba3bd36a",
+  "sourceCommit": "b6601dabaa908de7fae5aab6a20d51d914d3a8e2",
   "publicationStatus": "prepared, not published",
   "files": {
-    "CHANGELOG.md": "3b4fce24ef6f5a4b01e608935477144734bdbb704a45bac31fb1fda8c3faacac",
+    "CHANGELOG.md": "b4b5d0cd759b2c56b13867175f00fd1ec24e4bc01d5a42258fa774e35e36ac41",
     "LICENSE": "9d354bbe13511ac5d485e33ffc25a8e330573a690d1a1a35925fb04b6068565a",
     "packages/core/package.json": "0f04ab90dc9e9c1dfc1572568a6b431baf5d5defdb760498246ace7f0f6c63c3",
     "packages/core/src/agent.ts": "6d68cb688d2c898e51b3e57d38c37f9d34146aa6577e224b70d99a22e1d67a39",

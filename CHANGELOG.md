@@ -14,7 +14,7 @@ All notable changes to `@hootlens/mcp` are recorded here. The format follows [Ke
 
 - Registry metadata now links the public repository and lists the optional configuration and site-creation toolsets.
 
-## [1.1.0] - 2026-10-12
+## [1.1.0] - 2026-10-14
 
 ### Added
 
@@ -56,7 +56,7 @@ First release on npm. The same server was available before as a single-file down
 - Prompts for common jobs and resources for the Hoot Lens documentation.
 - Structured output for tool results, alongside the text content.
 - `hootlens-mcp login`, `logout` and `whoami`: sign in with your browser (OAuth with PKCE) instead of creating an access key. The sign-in is stored in the macOS Keychain, the Linux Secret Service, or a private file, and renews itself.
-- Packaging as an npm package with a `hootlens-mcp` command, no runtime dependencies, and npm provenance.
+- Packaging as an npm package with a `hootlens-mcp` command and no runtime dependencies. Historical 1.0.x packages did not carry npm provenance.
 
 ### Changed
 
