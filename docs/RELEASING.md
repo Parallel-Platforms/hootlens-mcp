@@ -1,6 +1,6 @@
 # Public MCP releases
 
-Version 1.3.0 is published with conversion outcome reports, replay preservation coverage, and npm provenance. Its [versioned release record](RELEASE-1.3.0.md) binds the exact public source, workflow, attestation, and isolated-install checks. Official MCP Registry publication is pending renewal of the existing Registry sign-in.
+Version 1.3.0 is published with conversion outcome reports, replay preservation coverage, and npm provenance. Its [versioned release record](RELEASE-1.3.0.md) binds the exact public source, workflow, attestation, and isolated-install checks. The official MCP Registry accepted active version 1.3.0, with exact-version and latest entries verified.
 
 Version 1.2.0 is published with the doctor command, npm provenance and an active official MCP Registry entry. Its [versioned release record](RELEASE-1.2.0.md) binds the exact public source, workflow, attestation and verified artifact. The hosted service releases separately.
 

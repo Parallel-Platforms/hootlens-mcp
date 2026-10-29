@@ -1,6 +1,6 @@
 # MCP 1.3.0 release record
 
-`@hootlens/mcp` 1.3.0 is published with read-only conversion outcome reports, replay preservation coverage, and npm provenance. Publication and provenance do not establish a security certification, customer capture, or compatibility with every client.
+`@hootlens/mcp` 1.3.0 is published with read-only conversion outcome reports, replay preservation coverage, and npm provenance. The official MCP Registry accepted `com.hootlens/mcp` 1.3.0 with active status. Publication and provenance do not establish a security certification, customer capture, or compatibility with every client.
 
 | Evidence | Exact release |
 | --- | --- |
@@ -10,9 +10,11 @@
 | Release tag | [`mcp-v1.3.0`](https://github.com/Parallel-Platforms/hootlens-mcp/tree/mcp-v1.3.0) |
 | Publication workflow | [`release.yml`, run 40896800542, attempt 1](https://github.com/Parallel-Platforms/hootlens-mcp/actions/runs/40896800542/attempts/1) |
 | npm attestation | [Registry signatures and provenance](https://registry.npmjs.org/-/npm/v1/attestations/@hootlens%2fmcp@1.3.0) |
-| Official MCP Registry | Publication pending. The existing Registry sign-in must be renewed. |
+| Official MCP Registry | [`com.hootlens/mcp` 1.3.0](https://registry.modelcontextprotocol.io/v0.1/servers/com.hootlens%2Fmcp/versions/1.3.0), active |
 
 Verification downloaded the exact npm tarball, checked its SHA-512 integrity against npm metadata, and confirmed five regular allowlisted files with the expected public package identity. The provenance subject matches that tarball and binds the public repository, commit, tag, and workflow run above. An isolated install of `@hootlens/mcp@1.3.0` with lifecycle scripts disabled passed `npm audit signatures`, verifying one registry signature and one attestation.
+
+The official Registry accepted publication on 29 October 2026 at 16:37:52 UTC. Its exact-version and latest endpoints both returned active 1.3.0 during verification. HTTP namespace authentication was renewed after the GitHub-merged domain proof was published by Netlify and its exact bytes were checked. The signing key remains outside Git; its file and the publisher’s cached JWT have mode 0600.
 
 The installed CLI and stdio server reported `1.3.0`. A real MCP SDK client discovered `get_conversion_report` as a read-only tool and called it against a loopback API with synthetic data. The check verified project pinning, separate EUR, JPY, KWD, and USD minor-unit values, and GET-only requests. It did not use customer credentials or recordings, or exercise a signed-in client UI.
 
