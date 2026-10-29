@@ -2,11 +2,9 @@
 
 Give your coding agent evidence from website visits: recordings, click maps, funnels and recurring snags. Trace a finding to the page, release, device and recorded moment before proposing a fix.
 
-Version [1.2.0](https://www.npmjs.com/package/@hootlens/mcp/v/1.2.0) is published with the doctor command and npm provenance from the public [`mcp-v1.2.0` tag](https://github.com/Parallel-Platforms/hootlens-mcp/tree/mcp-v1.2.0). The [release record](docs/RELEASE-1.2.0.md) links the exact source, attestation and official MCP Registry entry. Issues and questions are welcome here.
+Version [1.3.0](https://www.npmjs.com/package/@hootlens/mcp/v/1.3.0) is published with conversion outcome reports, replay preservation coverage, and npm provenance from the public [`mcp-v1.3.0` tag](https://github.com/Parallel-Platforms/hootlens-mcp/tree/mcp-v1.3.0). The [release record](docs/RELEASE-1.3.0.md) links its exact source, attestation, and verification scope. The [1.2.0 record](docs/RELEASE-1.2.0.md) preserves the doctor release and its Registry evidence. Issues and questions are welcome here.
 
-Version 1.3.0 is prepared in this source checkout with conversion outcome reports and replay preservation coverage. It is not published by this source update.
-
-[The 1.1.0 release record](docs/RELEASE-1.1.0.md) preserves that release's provenance and source. Provenance identifies the source and build, not a security certification. The [1.1.0 security evidence](docs/security/release-1.1.0/README.md) records bounded scans and synthetic permission checks. [Historical scan evidence](docs/SECURITY-EVIDENCE.md) remains specific to the versions it inspected. Neither transfers to 1.2.0.
+[The 1.1.0 release record](docs/RELEASE-1.1.0.md) preserves that release's provenance and source. Provenance identifies the source and build, not a security certification. The [1.1.0 security evidence](docs/security/release-1.1.0/README.md) records bounded scans and synthetic permission checks. [Historical scan evidence](docs/SECURITY-EVIDENCE.md) remains specific to the versions it inspected. Neither transfers to 1.3.0.
 
 ## Try a first investigation without an account
 

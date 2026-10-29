@@ -1,5 +1,7 @@
 # Public MCP releases
 
+Version 1.3.0 is published with conversion outcome reports, replay preservation coverage, and npm provenance. Its [versioned release record](RELEASE-1.3.0.md) binds the exact public source, workflow, attestation, and isolated-install checks. Official MCP Registry publication is pending renewal of the existing Registry sign-in.
+
 Version 1.2.0 is published with the doctor command, npm provenance and an active official MCP Registry entry. Its [versioned release record](RELEASE-1.2.0.md) binds the exact public source, workflow, attestation and verified artifact. The hosted service releases separately.
 
 Version 1.1.0 was published on 14 October 2026 through this public repository's GitHub Actions trusted publisher, with npm provenance. The [versioned release record](RELEASE-1.1.0.md) links the attestation, exact tag, successful workflow and official Registry entry. The old private-repository npm trusted publisher was retired after the successful release. Version 1.0.2 remains published without provenance and cannot be republished; public source hashes and validation runs do not add an attestation to it.
