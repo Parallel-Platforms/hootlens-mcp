@@ -237,3 +237,90 @@ export interface BillingSummary {
   /** AI explanations generated this UTC month against the plan's allowance. Saved results are not counted. */
   ai: { used: number; limit: number };
 }
+
+/* ---------------------------------------------------------- discount codes */
+
+/**
+ * Discount codes are Stripe promotion codes on percent-off coupons. Stripe owns them: Hoot Lens stores nothing and
+ * only creates, lists and switches them off through the API on behalf of an explicitly authorized super-admin.
+ * Customers enter a code on Stripe Checkout, which validates and redeems it.
+ */
+export const discountDurationSchema = z.enum(['once', 'repeating', 'forever']);
+export type DiscountDuration = z.infer<typeof discountDurationSchema>;
+/** Codes are letters and digits, 3 to 20 characters, stored uppercase. Stripe matches them case-insensitively. */
+export const DISCOUNT_CODE_PATTERN = /^[A-Z0-9]{3,20}$/;
+export const DISCOUNT_CODE_MAX_LENGTH = 20;
+/** Most months a repeating discount may run. Longer should be `forever` or a complimentary plan. */
+export const DISCOUNT_MAX_MONTHS = 36;
+/** Most redemptions one code may allow. */
+export const DISCOUNT_MAX_REDEMPTIONS = 100_000;
+/** Above this percentage the dashboard asks the admin to confirm before the code is created. */
+export const DISCOUNT_CONFIRM_PERCENT = 50;
+/** Most codes the admin list shows. Stripe returns the newest first. */
+export const DISCOUNT_LIST_LIMIT = 100;
+
+export const discountCodeInputSchema = z.object({
+  code: z.string().trim().transform(value => value.toUpperCase()).pipe(z.string().regex(DISCOUNT_CODE_PATTERN, 'Use 3 to 20 letters and digits')),
+  percentOff: z.number().int().min(1).max(100),
+  duration: discountDurationSchema,
+  /** Required for `repeating`, forbidden otherwise. */
+  durationMonths: z.number().int().min(1).max(DISCOUNT_MAX_MONTHS).optional(),
+  /** Epoch ms after which the code can no longer be entered. */
+  expiresAt: z.number().int().positive().optional(),
+  maxRedemptions: z.number().int().min(1).max(DISCOUNT_MAX_REDEMPTIONS).optional(),
+  /** Only customers with no prior payment may use it. */
+  firstTimeOnly: z.boolean().default(false),
+}).superRefine((input, context) => {
+  if (input.duration === 'repeating' && input.durationMonths === undefined) context.addIssue({ code: 'custom', path: ['durationMonths'], message: 'Say how many months a repeating discount lasts' });
+  if (input.duration !== 'repeating' && input.durationMonths !== undefined) context.addIssue({ code: 'custom', path: ['durationMonths'], message: 'Months apply only to a repeating discount' });
+});
+export type DiscountCodeInput = z.infer<typeof discountCodeInputSchema>;
+
+/** A promotion code as the admin portal sees it. Counts and status come from Stripe at read time. */
+export const discountCodeSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  /** Absent when the coupon is a fixed amount made in Stripe rather than a percentage. */
+  percentOff: z.number().optional(),
+  amountOff: z.object({ cents: z.number().int(), currency: z.string() }).optional(),
+  duration: discountDurationSchema,
+  durationMonths: z.number().int().optional(),
+  /** Switched on in Stripe. An inactive code is refused at checkout. */
+  active: z.boolean(),
+  expiresAt: z.number().optional(),
+  maxRedemptions: z.number().int().optional(),
+  timesRedeemed: z.number().int(),
+  firstTimeOnly: z.boolean(),
+  createdAt: z.number(),
+  /** Firebase user id of the admin who created it here. Absent for codes made directly in Stripe. */
+  createdBy: z.string().optional(),
+  /** The code exists in live mode. Test-mode codes never bill anyone. */
+  live: z.boolean(),
+});
+export type DiscountCode = z.infer<typeof discountCodeSchema>;
+export const discountCodesResponseSchema = z.object({
+  codes: z.array(discountCodeSchema),
+  /** False when Stripe has more codes than the list limit. */
+  complete: z.boolean(),
+  /** The server's Stripe key is a live key, so new codes bill real customers. */
+  live: z.boolean(),
+});
+export type DiscountCodesResponse = z.infer<typeof discountCodesResponseSchema>;
+
+export type DiscountStatus = 'active' | 'inactive' | 'expired' | 'used_up';
+/** Whether a customer could enter the code right now. Stripe keeps `active` true past expiry, so expiry and caps are read here. */
+export function discountStatus(code: Pick<DiscountCode, 'active' | 'expiresAt' | 'maxRedemptions' | 'timesRedeemed'>, now: number): DiscountStatus {
+  if (!code.active) return 'inactive';
+  if (code.expiresAt !== undefined && code.expiresAt <= now) return 'expired';
+  if (code.maxRedemptions !== undefined && code.timesRedeemed >= code.maxRedemptions) return 'used_up';
+  return 'active';
+}
+
+/** Plain words for the discount: "20% off the first 3 months". */
+export function describeDiscount(code: Pick<DiscountCode, 'percentOff' | 'amountOff' | 'duration' | 'durationMonths'>): string {
+  const amount = code.percentOff !== undefined ? `${code.percentOff}% off`
+    : code.amountOff ? `${(code.amountOff.cents / 100).toLocaleString('en-US', { style: 'currency', currency: code.amountOff.currency.toUpperCase() })} off` : 'Discount';
+  if (code.duration === 'forever') return `${amount} every month`;
+  if (code.duration === 'repeating') return code.durationMonths === 1 ? `${amount} the first month` : `${amount} the first ${code.durationMonths ?? '?'} months`;
+  return `${amount} the first payment`;
+}

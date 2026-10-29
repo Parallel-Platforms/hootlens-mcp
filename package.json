@@ -1,6 +1,6 @@
 {
   "name": "@hootlens/mcp",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Hoot Lens MCP server: let AI assistants read recordings, replays, heatmaps, funnels and findings from Hoot Lens, with your own access.",
   "mcpName": "com.hootlens/mcp",
   "type": "module",

@@ -1,7 +1,7 @@
 /*
  * Teams and access. One owner per project (Project.ownerId, unchanged), plus members who each hold an explicit set of
- * permissions on that project. Roles are presets over those permissions: Viewer and Editor are exactly the sets they
- * always were and Custom is any other valid set. This module is the single place that says what a person may do, so the
+ * permissions on that project. Viewer is read-only, Editor can configure analytics and report business conversions,
+ * and Custom is any other valid set. This module is the single place that says what a person may do, so the
  * API, the dashboard and the tests read the same table.
  */
 import { z } from 'zod';
@@ -29,16 +29,16 @@ export type RolePreset = (typeof ROLE_PRESETS)[number];
  * - invite: see who is on the team, invite people and change or remove their access, within one's own permissions.
  * - manage: everything else (settings, install, deleting recordings, other people's keys). Owner only, never grantable.
  */
-export type ProjectPermission = 'read' | 'replay' | 'annotate' | 'configure' | 'tokens' | 'member' | 'invite' | 'manage';
+export type ProjectPermission = 'read' | 'replay' | 'annotate' | 'configure' | 'tokens' | 'member' | 'invite' | 'conversions:write' | 'manage';
 
 /** Permissions that can be granted to a member, in the order they are listed and stored. */
-export const MEMBER_PERMISSIONS = ['read', 'replay', 'annotate', 'configure', 'tokens', 'member', 'invite'] as const;
+export const MEMBER_PERMISSIONS = ['read', 'replay', 'annotate', 'configure', 'tokens', 'member', 'invite', 'conversions:write'] as const;
 export type MemberPermission = (typeof MEMBER_PERMISSIONS)[number];
 export const ALL_PERMISSIONS: readonly ProjectPermission[] = [...MEMBER_PERMISSIONS, 'manage'];
 
 export const ROLE_PERMISSIONS: Record<'owner' | RolePreset, readonly ProjectPermission[]> = {
   viewer: ['read', 'replay', 'tokens', 'member'],
-  editor: ['read', 'replay', 'annotate', 'configure', 'tokens', 'member'],
+  editor: ['read', 'replay', 'annotate', 'configure', 'tokens', 'member', 'conversions:write'],
   owner: ALL_PERMISSIONS,
 };
 
@@ -50,6 +50,7 @@ export const PERMISSION_INFO: Record<MemberPermission, { label: string; summary:
   configure: { label: 'Change site settings', summary: 'Goals, funnels, saved views, page groups and element names.' },
   tokens: { label: 'Create access keys', summary: 'Create access keys and connect AI apps, limited to what this person can do.' },
   member: { label: 'Be on the team', summary: 'See their own access and leave the site.' },
+  'conversions:write': { label: 'Report business conversions', summary: 'Create a server-only key that reports completed business events. This permission does not grant access to reports or replays.' },
   invite: { label: 'Invite and manage people', summary: 'See the team, invite people and change their access, up to what they hold themselves.' },
 };
 
@@ -114,7 +115,7 @@ export interface AccessHolder { role: ProjectRole; permissions?: readonly string
 /**
  * The permissions a holder has. The owner has all of them. A member with a stored set has exactly that set (cleaned up,
  * so a bad stored value can only lose access, never gain it). A member without one derives it from the role, which is how
- * members made before custom access keep exactly the access they had. A custom role without a stored set has the bare minimum.
+ * members made before custom access receive the named preset. A custom role without a stored set has the bare minimum.
  */
 export function permissionsOf(holder: AccessHolder | ProjectRole): readonly ProjectPermission[] {
   const role = typeof holder === 'string' ? holder : holder.role;

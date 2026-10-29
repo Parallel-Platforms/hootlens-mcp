@@ -5,12 +5,12 @@
   "description": "Read Hoot Lens recordings, replays, heatmaps, funnels and findings with your own account.",
   "websiteUrl": "https://hootlens.com",
   "repository": { "url": "https://github.com/Parallel-Platforms/hootlens-mcp", "source": "github" },
-  "version": "1.2.0",
+  "version": "1.3.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@hootlens/mcp",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

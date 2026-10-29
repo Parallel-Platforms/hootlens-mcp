@@ -6,7 +6,7 @@
  * changes can move the numbers on their own. Everything here is a count, a rate, an interval or a wording
  * rule, so the API, the MCP service and the dashboard say the same thing. No function claims a cause.
  */
-import { isMeasurementChange, type ChangeMarker, type Goal } from './changes';
+import { goalCounterKey, isMeasurementChange, type ChangeMarker, type Goal } from './changes';
 import type { DeviceClass } from './index';
 
 /** Visits each side needs before a conversion rate is compared. Matches the release comparison. */
@@ -67,7 +67,7 @@ export interface SideStats {
   /** Page views whose scroll depth was measured, and how many of those reached half the page. */
   scrollMeasured: number;
   scrollHalf: number;
-  /** Sessions that viewed the page group and converted, by goal id. */
+  /** Sessions that viewed the page group and converted, by goal counter key. */
   goals: Record<string, number>;
 }
 export const emptySide = (): SideStats => ({ visits: 0, snags: 0, scrollMeasured: 0, scrollHalf: 0, goals: {} });
@@ -135,9 +135,9 @@ export const COUNTING_CHANGED_VERDICT: ConversionVerdict = {
   text: 'No verdict: this change only changed how Hoot Lens counts, so a difference here reflects new counting, not visitor behavior',
 };
 
-export function goalImpact(goal: Pick<Goal, 'id' | 'name' | 'since'>, before: SideStats, after: SideStats, beforeFrom: number, options: { measurementOnly?: boolean } = {}): GoalImpact {
-  const b = rateSide(before.visits, before.goals[goal.id] ?? 0);
-  const a = rateSide(after.visits, after.goals[goal.id] ?? 0);
+export function goalImpact(goal: Pick<Goal, 'id' | 'name' | 'since'> & { kind?: string; match?: string; confirmation?: string }, before: SideStats, after: SideStats, beforeFrom: number, options: { measurementOnly?: boolean } = {}): GoalImpact {
+  const b = rateSide(before.visits, before.goals[goalCounterKey(goal)] ?? 0);
+  const a = rateSide(after.visits, after.goals[goalCounterKey(goal)] ?? 0);
   return {
     goalId: goal.id, name: goal.name, before: b, after: a,
     differencePoints: b.rate === null || a.rate === null ? null : (a.rate - b.rate) * 100,

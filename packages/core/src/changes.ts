@@ -8,6 +8,7 @@
  * dashboard.
  */
 import { z } from 'zod';
+import { BUSINESS_EVENT_NAME_PATTERN, type BusinessEvent, type ConversionProvenance } from './conversions';
 import { matchesTargetingRule, targetingRuleError } from './targeting';
 
 const ID = /^[a-zA-Z0-9_-]{1,80}$/;
@@ -100,7 +101,7 @@ export interface ChangeList { changes: ChangeMarker[]; }
 export const MAX_GOALS = 20;
 export const GOAL_NAME_MAX = 60;
 export const GOAL_MATCH_MAX = 200;
-export const goalKindSchema = z.enum(['click', 'page']);
+export const goalKindSchema = z.enum(['click', 'page', 'event']);
 export type GoalKind = z.infer<typeof goalKindSchema>;
 /** How a click goal finds its element: a CSS selector, a `data-hoot-id`, or text in the element's readable label. */
 export const goalByValues = ['selector', 'hootId', 'label'] as const;
@@ -125,6 +126,7 @@ const clickGoalSchema = z.discriminatedUnion('by', [
 export const goalInputSchema = z.discriminatedUnion('kind', [
   clickGoalSchema,
   z.object({ kind: z.literal('page'), name: goalName, match: pageMatch }),
+  z.object({ kind: z.literal('event'), name: goalName, match: z.string().regex(BUSINESS_EVENT_NAME_PATTERN), confirmation: z.enum(['browser', 'server']) }),
 ]);
 export type GoalInput = z.infer<typeof goalInputSchema>;
 
@@ -185,7 +187,7 @@ export function trackerGoals(goals: readonly Goal[] | undefined): TrackerGoal[] 
 }
 
 export const goalSummary = (goal: Pick<Goal, 'kind' | 'match'> & { by?: GoalBy }): string =>
-  goal.kind === 'page' ? `Visit to ${goal.match}`
+  goal.kind === 'event' ? `Business event ${goal.match}` : goal.kind === 'page' ? `Visit to ${goal.match}`
     : goal.by === 'label' ? `Click on "${goal.match}"` : goal.by === 'hootId' ? `Click on data-hoot-id ${goal.match}` : `Click on ${goal.match}`;
 
 /** GET /v1/projects/:projectId/goals */
@@ -209,3 +211,13 @@ export interface GoalStat {
 }
 /** GET /v1/projects/:projectId/goals/stats?from=&to= */
 export interface GoalStats { from: number; to: number; sessions: number; goals: GoalStat[]; }
+
+/** Public browser events cannot satisfy a goal that requires a server receipt. */
+export function goalMatchesEvent(goal: Goal, event: BusinessEvent, source: ConversionProvenance): boolean {
+  return goal.kind === 'event' && goal.match === event.name && goal.since <= event.at && goal.confirmation === (source === 'server_reported' ? 'server' : 'browser');
+}
+
+/** Event outcomes keep their definition in the counter key, so changing a confirmation policy never relabels old results. */
+export function goalCounterKey(goal: { id: string; since: number; kind?: string; match?: string; confirmation?: string }): string {
+  return goal.kind === 'event' ? `event:${goal.id}:${goal.since}:${goal.confirmation ?? ''}:${goal.match ?? ''}` : goal.id;
+}

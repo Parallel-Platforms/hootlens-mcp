@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import { replayAssetSettingsSchema, type ReplayAssetSettings, type ReplayPreservation } from './replay-archive';
+export * from './replay-archive';
+export * from './replay-preservation';
+import { businessEventsSchema } from './conversions';
+export * from './conversions';
 import { aiSettingsSchema, type AiSettings } from './explanations.js';
 import { elementContextSchema, type ElementContext, type TopSnag } from './element-context';
 import { SOURCE_LOCATION_MAX_LENGTH, parseSourceLocation } from './source-location';
@@ -47,6 +52,7 @@ import { DEFAULT_CONSENT_REGIONS, MAX_CONSENT_REGIONS, normalizeConsentRegions }
 export * from './consent-regions';
 export * from './page-groups';
 export * from './signup-source';
+export * from './signup-entry';
 export * from './business';
 
 export const idSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/);
@@ -375,9 +381,11 @@ export const batchSchema = z.object({
   exit: z.string().max(EXIT_MAX_LENGTH).refine(isExitDestination, 'Invalid exit destination').optional(),
   /** JavaScript errors of this page view since the previous batch. Dropped by the collector unless the project records errors. */
   errors: recordedErrorsSchema.optional(),
+  businessEvents: businessEventsSchema.optional(),
 }).superRefine((v, ctx) => {
+  for (const event of v.businessEvents ?? []) if (event.at < v.segment.startedAt || event.at > v.endedAt) ctx.addIssue({code:'custom',message:'Business event is outside the recording interval'});
   if (v.endedAt < v.segment.startedAt) ctx.addIssue({code:'custom', message:'Invalid recording interval'});
-  if (!v.events.length && !v.clicks.length && !v.scroll && !v.moves?.cells.length && !v.errors?.length) ctx.addIssue({code:'custom', message:'Empty batch'});
+  if (!v.events.length && !v.clicks.length && !v.scroll && !v.moves?.cells.length && !v.errors?.length && !v.businessEvents?.length) ctx.addIssue({code:'custom', message:'Empty batch'});
 });
 export type Click = z.infer<typeof clickSchema>;
 export type Segment = z.infer<typeof segmentSchema>;
@@ -411,6 +419,7 @@ export interface Recording extends GroupedSegment {
   internal?: true;
   /** Ids of the goals this page view converted, under the goal definitions at the time. Absent when none. */
   goalIds?: string[];
+  goalDefinitions?: Record<string, string>;
   /** Where the page view's last link led when a click left the page: a same-site path, or another site's origin only. Absent when no click left it. */
   exitTo?: string;
 }
@@ -427,6 +436,7 @@ export interface Project {
   /** Regions asked first when `consent` is regional. Absent means the default list. */
   consentRegions?: string[];
   sampleRate?: number;
+  replayAssets?: ReplayAssetSettings;
   /** Absent on projects created before AI explanations; treat as off. */
   ai?: AiSettings;
   /** Patterns for preview deploy hosts (preview-origins.ts). They may send test visits only. Absent means none. */
@@ -469,7 +479,7 @@ export interface TokenRecord { id: string; projectId: string; ownerId: string; n
  * `configure` lets a key preview and apply changes to the site's settings (page targeting, goals, funnels, stricter privacy).
  * It is effective only for owners (editors: goals and funnels) and can never weaken privacy.
  */
-export const PROJECT_TOKEN_SCOPES = ['read', 'replay', 'annotate', 'configure'] as const;
+export const PROJECT_TOKEN_SCOPES = ['read', 'replay', 'annotate', 'configure', 'conversions:write'] as const;
 export type ProjectTokenScope = (typeof PROJECT_TOKEN_SCOPES)[number];
 /**
  * `triage` lets a key work the issues queue as staff. Only staff can put it on a key, it acts only while its creator is
@@ -571,6 +581,7 @@ export interface RecordingSummary extends Segment {
   internal?: true;
   /** Ids of the goals this page view converted, under the goal definitions at the time. Absent when none. */
   goalIds?: string[];
+  goalDefinitions?: Record<string, string>;
   /** Where the page view's last link led when a click left the page: a same-site path, or another site's origin only. Absent when no click left it. */
   exitTo?: string;
 }
@@ -647,7 +658,7 @@ export interface SessionPage { sessions: SessionSummary[]; nextCursor?: string; 
 /** GET /v1/projects/:projectId/sessions/:sessionId, segments ordered by pageIndex, then startedAt. */
 export interface SessionDetail { sessionId: string; segments: RecordingSummary[]; }
 /** GET /v1/projects/:projectId/recordings/:id */
-export interface RecordingDetail { recording: Recording; events: Batch['events'];
+export interface RecordingDetail { preservation?: ReplayPreservation; recording: Recording; events: Batch['events'];
   /** JavaScript errors of the page view in time order, when the site records them and the page view had any. */
   errors?: RecordingError[]; }
 /** Segments and clicks for one locale or variant inside a cohort. `(other)` folds in values beyond the first 20. */
@@ -784,6 +795,7 @@ export const projectUpdateSchema = z.object({
   /** Owner only. An empty list removes them. See preview-origins.ts for the accepted patterns. */
   previewOrigins: z.array(z.string().max(300)).max(PREVIEW_ORIGIN_LIMIT).optional(),
   privacy: privacyPolicySchema.optional(),
+  replayAssets: replayAssetSettingsSchema.optional(),
   consent: consentModeSchema.optional(),
   consentRegions: consentRegionsSchema.optional(),
   sampleRate: z.number().min(0).max(1).optional(),

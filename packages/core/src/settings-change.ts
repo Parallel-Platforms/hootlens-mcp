@@ -142,7 +142,7 @@ export function settingsChangeAreas(change: SettingsChange): SettingsArea[] {
   return areas;
 }
 
-const same = (a: Goal, b: { kind: string; match: string; by?: string }): boolean => a.kind === b.kind && a.match === b.match && ('by' in a ? a.by : undefined) === b.by;
+const same = (a: Goal, b: { kind: string; match: string; by?: string; confirmation?: string }): boolean => a.kind === b.kind && a.match === b.match && (a.kind !== 'event' || (b.kind === 'event' && a.confirmation === b.confirmation)) && ('by' in a ? a.by : undefined) === b.by;
 
 /**
  * Applies a change to the settings in memory. Throws SettingsChangeError when it cannot be applied as written or would
