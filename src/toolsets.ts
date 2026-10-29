@@ -8,7 +8,7 @@ export const TOOLSETS = ['read', 'replay', 'annotate', 'configure', 'install', '
 export type Toolset = (typeof TOOLSETS)[number];
 
 export const TOOLSET_INFO: Record<Toolset, { summary: string; scope?: string }> = {
-  read: { summary: 'Sites (projects), visits, recording lists, narratives, heatmaps, findings, JavaScript errors, traffic, goals, funnels, changes and the weekly summary.' },
+  read: { summary: 'Sites (projects), visits, recording lists, narratives, heatmaps, findings, JavaScript errors, traffic, conversion outcomes, goals, funnels, changes and the weekly summary.' },
   replay: { summary: 'Raw replay events and clicks of one recording. Needs the replay scope.', scope: 'replay' },
   annotate: { summary: 'Add notes to recordings and log changes. Only offered when the credential has the annotate scope.', scope: 'annotate' },
   configure: { summary: 'Read the site\'s settings, preview a change to page targeting, goals, funnels or privacy, and apply exactly what was previewed. Privacy can only get stricter. Only offered when the credential has the configure scope.', scope: 'configure' },

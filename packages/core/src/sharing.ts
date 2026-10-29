@@ -1,3 +1,4 @@
+import type { ReplayPreservation } from './replay-archive';
 /*
  * Share links for one recording, one whole session or one heatmap cohort. A link is a random token shown once;
  * only its SHA-256 hash is stored. The public endpoints take the token in a POST body and return only the shared
@@ -69,7 +70,7 @@ export interface SharedRecordingView {
   narrative?: Narrative;
 }
 /** POST /v1/share/recording/events */
-export interface SharedRecordingDetail { recording: SharedRecording; events: unknown[] }
+export interface SharedRecordingDetail { preservation?: ReplayPreservation; recording: SharedRecording; events: unknown[] }
 
 /** POST /v1/share/heatmap. The cohort key and the reference recording's ID stay on the server. */
 export interface SharedHeatmapView {
@@ -77,7 +78,7 @@ export interface SharedHeatmapView {
   heatmap: Omit<HeatmapAggregate, 'key' | 'reference'> & { reference?: { timestamp: number } };
 }
 /** POST /v1/share/heatmap/reference */
-export interface SharedHeatmapReference { events: unknown[]; timestamp: number }
+export interface SharedHeatmapReference { preservation?: ReplayPreservation; events: unknown[]; timestamp: number }
 
 /** A copy of `value` without the named fields, for responses that must not carry them. */
 export function without<T extends object, K extends keyof T>(value: T, ...keys: K[]): Omit<T, K> {

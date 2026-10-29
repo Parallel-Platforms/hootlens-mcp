@@ -16,7 +16,9 @@
     "./install-guides": "./src/install-guides.ts",
     "./source-location": "./src/source-location.ts",
     "./replay-fit": "./src/replay-fit.ts",
-    "./replay-assets": "./src/replay-assets.ts"
+    "./replay-assets": "./src/replay-assets.ts",
+    "./replay-preservation": "./src/replay-preservation.ts",
+    "./business-event-limits": "./src/business-event-limits.ts"
   },
   "dependencies": {
     "zod": "^4.1.12"

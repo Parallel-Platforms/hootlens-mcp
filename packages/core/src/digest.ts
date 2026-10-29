@@ -6,6 +6,7 @@
  * The same structure feeds the email, the in-dashboard preview and the `weekly_summary` agent tool, so all three say
  * the same thing. The functions here are pure: the API reads the counts, these functions decide what is said.
  */
+import { goalCounterKey } from './changes';
 import type { ChangeMarker, Goal, GoalKind, GoalStat } from './changes';
 import { elementName, sentenceName, type ElementNameSource } from './element-name';
 import type { FunnelStats } from './funnels';
@@ -123,7 +124,7 @@ export function goalStatsOver(goals: readonly Goal[], days: readonly string[], p
     for (const day of days) {
       if (day < first) continue;
       visits += perDay.get(day)?.sessions ?? 0;
-      converted += perDay.get(day)?.goals[goal.id] ?? 0;
+      converted += perDay.get(day)?.goals[goalCounterKey(goal)] ?? 0;
     }
     return goalStat(goal, visits, converted);
   });

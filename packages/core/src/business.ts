@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { signupEntrySchema } from './signup-entry';
+import { SIGNUP_CHANNELS, SIGNUP_ASSISTANTS } from './signup-source';
 
 const count = z.number().int().nonnegative();
 export const businessCoverageSchema = z.object({ status: z.enum(['complete', 'partial', 'unavailable']), read: count, limit: count, note: z.string() });
@@ -20,7 +22,7 @@ export const businessReportSchema = z.object({
   acquisition: z.object({ cohort: count, rows: z.array(conversion), attribution: z.literal('optional_self_reported'), note: z.string() }),
   activity: z.object({ activeAccounts: count, agentApiAccounts: count, accountDays: count, agentApiDays: count, observedFrom: z.number().nullable(), note: z.string() }),
   investigations: businessInvestigationReportSchema.optional(),
-  coverage: z.object({ accounts: businessCoverageSchema, projects: businessCoverageSchema, billing: businessCoverageSchema, attribution: businessCoverageSchema, activity: businessCoverageSchema, investigations: businessCoverageSchema.optional() }),
+  coverage: z.object({ accounts: businessCoverageSchema, projects: businessCoverageSchema, billing: businessCoverageSchema, attribution: businessCoverageSchema, origins: businessCoverageSchema.optional(), activity: businessCoverageSchema, investigations: businessCoverageSchema.optional() }),
   limitations: z.array(z.string()),
 });
 export type BusinessReport = z.infer<typeof businessReportSchema>;
@@ -34,6 +36,9 @@ export const businessAccountInsightSchema = z.object({
   id: z.string(), email: z.string().nullable(), displayName: z.string().nullable(), emailVerified: z.boolean(), disabled: z.boolean(),
   population: z.enum(['customer', 'internal', 'disabled', 'anonymous']), excludedReason: z.string().nullable(),
   createdAt: timestamp, lastSignInAt: timestamp, planStatus: businessPlanStatusSchema, acquisitionChannel: z.string().nullable(),
+  planName: z.string().nullable().optional(), signupEntry: signupEntrySchema.nullable().optional(),
+  signupSource: z.object({ channel: z.enum(SIGNUP_CHANNELS), assistant: z.enum(SIGNUP_ASSISTANTS).optional() }).nullable().optional(),
+  signInMethods: z.array(z.string().max(80)).max(10).optional(),
   sites: z.array(z.object({ id: z.string(), name: z.string(), hostnames: z.array(z.string()), createdAt: timestamp, lastConfigFetchAt: timestamp, lastCollectAt: timestamp })).max(2000),
   activity: z.object({ accountDays: count, agentApiDays: count, firstObservedAt: timestamp, lastObservedDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable() }),
   investigations: z.object({ days: count, firstRetainedAt: timestamp, lastObservedDay: day.nullable() }).optional(),

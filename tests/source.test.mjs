@@ -164,14 +164,62 @@ test('the compiled explanation tool keeps allowance replies neutral and preserve
   }
 });
 
+test('compiled outcome reports remain read-only and replay preserves historical coverage', { timeout: 30_000 }, async () => {
+  const requests = [];
+  const money = [{ currency: 'JPY', amountMinor: 1500 }, { currency: 'KWD', amountMinor: 1005 }];
+  const metrics = { visits: 4, conversions: 1, occurrences: 2, browserReported: 0, serverReported: 2, revenue: money };
+  const report = {
+    from: 1, to: 2, goalId: 'goal_fixture', goalName: 'Purchase completed', dimension: 'device', since: 1,
+    coverage: { status: 'partial', note: 'Earlier source conversions are unknown.' }, totals: metrics,
+    rows: [{ key: 'mobile', label: 'mobile', ...metrics, rate: 0.25 }], omittedRows: 0, windowBasis: 'visit_started',
+  };
+  const preservation = {
+    version: 1, status: 'partial', total: 3, preserved: 1, pending: 0, unavailable: 1, blocked: 1, quotaLimited: 0, late: 1,
+    firstSeenAt: 1, lastCapturedAt: 40_000, blockedOrigins: ['https://synthetic.example'],
+  };
+  const api = createServer((request, response) => {
+    const url = new URL(request.url, 'http://fixture.local');
+    requests.push({ method: request.method, path: url.pathname, query: Object.fromEntries(url.searchParams) });
+    response.setHeader('Content-Type', 'application/json');
+    if (url.pathname === '/v1/access') return response.end(JSON.stringify({ credential: { scopes: ['read', 'replay'] } }));
+    if (url.pathname === '/v1/projects/proj_fixture/conversions/report') return response.end(JSON.stringify(report));
+    if (url.pathname === '/v1/projects/proj_fixture/recordings/recording_fixture') return response.end(JSON.stringify({
+      recording: { id: 'recording_fixture', path: '/checkout', viewport: { width: 390, height: 844 }, clicks: [] },
+      events: [], preservation,
+    }));
+    return response.writeHead(404).end('{}');
+  });
+  await new Promise(resolve => api.listen(0, '127.0.0.1', resolve));
+  const address = api.address(); assert.ok(address && typeof address === 'object');
+  const client = new Client({ name: 'compiled-outcomes-fixture', version: '1' });
+  const transport = new StdioClientTransport({ command: process.execPath, args: [cli, '--toolsets', 'read,replay', '--project', 'proj_fixture'], cwd: root,
+    env: { ...cleanEnv, HOOTLENS_PAT: 'synthetic_outcomes_fixture', HOOTLENS_API_URL: `http://127.0.0.1:${address.port}` }, stderr: 'pipe' });
+  try {
+    await client.connect(transport, { timeout: 5_000 });
+    const tools = (await client.listTools({}, { timeout: 5_000 })).tools;
+    const outcomes = tools.find(tool => tool.name === 'get_conversion_report'); assert.ok(outcomes);
+    assert.equal(outcomes.annotations.readOnlyHint, true);
+    assert.equal(outcomes.annotations.openWorldHint, false);
+    assert.ok(!tools.some(tool => /^(submit|record)_conversion$/.test(tool.name)), 'Outcome submission is absent from MCP tools');
+    const result = await client.callTool({ name: 'get_conversion_report', arguments: { goalId: 'goal_fixture', dimension: 'device', from: 1, to: 2 } }, undefined, { timeout: 5_000 });
+    assert.ok(!result.isError); assert.deepEqual(result.structuredContent, report);
+    assert.deepEqual(result.structuredContent.totals.revenue, money, 'Currency minor units remain separate and unchanged');
+    const replay = await client.callTool({ name: 'load_replay', arguments: { recordingId: 'recording_fixture' } }, undefined, { timeout: 5_000 });
+    assert.ok(!replay.isError); assert.deepEqual(replay.structuredContent.preservation, preservation);
+    const request = requests.find(request => request.path.endsWith('/conversions/report'));
+    assert.deepEqual(request.query, { goalId: 'goal_fixture', dimension: 'device', from: '1', to: '2' });
+    assert.ok(requests.every(request => request.method === 'GET'), 'Reports and replay metadata never submit an outcome');
+  } finally { await client.close(); api.closeAllConnections(); await new Promise(resolve => api.close(resolve)); }
+});
+
 test('the release sources match the recorded snapshot, including shared imports', async () => {
   const source = JSON.parse(await readFile(new URL('../docs/SOURCE.json', import.meta.url), 'utf8'));
   const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   const server = JSON.parse(await readFile(new URL('../server.json', import.meta.url), 'utf8'));
-  assert.equal(source.version, '1.2.0');
-  assert.equal(source.sourceCommit, 'fd167a771f3b819ed6932e81a538fa346a80116a');
+  assert.equal(source.version, '1.3.0');
+  assert.equal(source.sourceCommit, 'f591dc2f0e560dd676d93566ad85617ae8b8859a');
   assert.equal(source.sourceUpdates, undefined, 'This release imports one complete immutable source commit');
-  assert.equal(Object.keys(source.files).length, 80);
+  assert.equal(Object.keys(source.files).length, 85);
   assert.ok(source.files['src/cli/doctor.ts']);
   assert.equal(manifest.version, source.version);
   assert.equal(server.version, source.version);
@@ -260,7 +308,7 @@ test('the compiled server gates account setup and preserves its retry and consen
 
 test('the standalone bundle reports the prepared version and CLI usage', async () => {
   const version = await run(process.execPath, [cli, '--version'], { cwd: root, env: cleanEnv, timeout: 10_000 });
-  assert.equal(version.stdout.trim(), '1.2.0');
+  assert.equal(version.stdout.trim(), '1.3.0');
   assert.equal(version.stderr, '');
   const help = await run(process.execPath, [cli, '--help'], { cwd: root, env: cleanEnv, timeout: 10_000 });
   assert.match(help.stdout, /login\|logout\|whoami/);
@@ -285,7 +333,7 @@ test('the standalone doctor runs public probes without bearer and redacts invali
   try {
     const result = await run(process.execPath, [cli, 'doctor', '--json', '--toolsets', 'read,replay'], { cwd: root, env: { ...cleanEnv, HOOTLENS_API_URL: origin, HOOTLENS_PAT: 'synthetic-doctor-secret' }, timeout: 15_000 });
     const report = JSON.parse(result.stdout);
-    assert.equal(report.packageVersion, '1.2.0');
+    assert.equal(report.packageVersion, '1.3.0');
     assert.equal(report.ok, true);
     assert.equal(report.authenticatedMetadataVerified, false);
     assert.equal(report.investigationVerified, false);
@@ -329,7 +377,7 @@ test('the built stdio server discovers read tools, defaults to a pinned project 
   const client = new Client({ name: 'public-source-fixture', version: '1.0.0' });
   try {
     await client.connect(transport, { timeout: 10_000 });
-    assert.equal(client.getServerVersion()?.version, '1.2.0');
+    assert.equal(client.getServerVersion()?.version, '1.3.0');
     const tools = await client.listTools({ cursor: '' }, { timeout: 5_000 });
     assert.ok(tools.tools.some(tool => tool.name === 'list_recordings'));
     assert.ok(!tools.tools.some(tool => ['add_note', 'log_change', 'configure', 'submit_issue'].includes(tool.name)));

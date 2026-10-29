@@ -4,6 +4,8 @@ Give your coding agent evidence from website visits: recordings, click maps, fun
 
 Version [1.2.0](https://www.npmjs.com/package/@hootlens/mcp/v/1.2.0) is published with the doctor command and npm provenance from the public [`mcp-v1.2.0` tag](https://github.com/Parallel-Platforms/hootlens-mcp/tree/mcp-v1.2.0). The [release record](docs/RELEASE-1.2.0.md) links the exact source, attestation and official MCP Registry entry. Issues and questions are welcome here.
 
+Version 1.3.0 is prepared in this source checkout with conversion outcome reports and replay preservation coverage. It is not published by this source update.
+
 [The 1.1.0 release record](docs/RELEASE-1.1.0.md) preserves that release's provenance and source. Provenance identifies the source and build, not a security certification. The [1.1.0 security evidence](docs/security/release-1.1.0/README.md) records bounded scans and synthetic permission checks. [Historical scan evidence](docs/SECURITY-EVIDENCE.md) remains specific to the versions it inspected. Neither transfers to 1.2.0.
 
 ## Try a first investigation without an account
@@ -93,7 +95,7 @@ The shared source needed by the server is included under `packages/core`. No pri
 
 The tests check snapshot hashes, version identity, CLI execution and a real stdio SDK connection to a loopback API with synthetic fixtures. They check read-tool discovery, project pinning and API refusal. They do not validate customer capture, production authorization, browser sign-in or compatibility with every client. CI runs these checks on Linux and Windows with Node 20 and 22; consult the actual run before claiming those platforms passed.
 
-[Source identity and synchronization](docs/SOURCE.md) describes the complete prepared 1.2.0 import. The [1.1.0 release record](docs/RELEASE-1.1.0.md) separately identifies the published 1.1.0 artifact and provenance. Historical security evidence remains versioned.
+[Source identity and synchronization](docs/SOURCE.md) describes the complete prepared 1.3.0 import. The [1.1.0 release record](docs/RELEASE-1.1.0.md) separately identifies the published 1.1.0 artifact and provenance. Historical security evidence remains versioned.
 
 ## Privacy and access
 

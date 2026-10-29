@@ -2,6 +2,13 @@
 
 All notable changes to `@hootlens/mcp` are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - Unreleased
+
+### Added
+
+- `get_conversion_report` reads a goal's outcomes by original channel, referrer, campaign, device, entry page, or release. It separates converting visits from reported events, reports browser/server provenance, preserves each currency, and discloses measurement coverage and omitted rows. The tool cannot submit conversions.
+- Replay responses include preservation coverage for public images, CSS, and fonts. Pending or partial archives are distinguished from legacy recordings that still use live files.
+
 ## [1.2.0] - Unreleased
 
 ### Added
