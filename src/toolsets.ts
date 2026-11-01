@@ -1,7 +1,8 @@
 /*
- * Toolsets: named groups of tools, so a person can offer an assistant only what it needs. The default is what most
- * assistants want: read, replay, install and feedback, plus annotate when the credential holds the annotate scope,
- * configure when it holds the configure scope and issues when it holds the triage scope. A toolset the credential's scopes cannot use is never offered.
+ * Toolsets let a person offer an assistant only the groups it needs. The default includes the customer catalog:
+ * read, replay, annotation, settings, installation, site creation, and feedback. Customer tools stay discoverable
+ * when permission must be requested later; execution
+ * still requires the credential's scopes and the person's current site permissions. Staff tools remain scope-filtered.
  */
 
 export const TOOLSETS = ['read', 'replay', 'annotate', 'configure', 'install', 'sites', 'feedback', 'issues'] as const;
@@ -10,22 +11,22 @@ export type Toolset = (typeof TOOLSETS)[number];
 export const TOOLSET_INFO: Record<Toolset, { summary: string; scope?: string }> = {
   read: { summary: 'Sites (projects), visits, recording lists, narratives, heatmaps, findings, JavaScript errors, traffic, conversion outcomes, goals, funnels, changes and the weekly summary.' },
   replay: { summary: 'Raw replay events and clicks of one recording. Needs the replay scope.', scope: 'replay' },
-  annotate: { summary: 'Add notes to recordings and log changes. Only offered when the credential has the annotate scope.', scope: 'annotate' },
-  configure: { summary: 'Read the site\'s settings, preview a change to page targeting, goals, funnels or privacy, and apply exactly what was previewed. Privacy can only get stricter. Only offered when the credential has the configure scope.', scope: 'configure' },
+  annotate: { summary: 'Add notes to recordings and log changes. Execution requires the annotate scope.', scope: 'annotate' },
+  configure: { summary: 'Read the site\'s settings, preview a change to page targeting, goals, funnels or privacy, and apply exactly what was previewed. Privacy can only get stricter. Execution requires the configure scope.', scope: 'configure' },
   install: { summary: 'Install tags for a platform and the install checker.' },
   sites: { summary: 'Create a site in the signed-in owner\'s account, within its site allowance. Requires explicit OAuth sites:create permission for all sites and an unpinned connection. Personal access tokens cannot create sites.', scope: 'sites:create' },
   feedback: { summary: 'Report bugs and ideas to the Hoot Lens team and follow your own reports.' },
   issues: { summary: 'Hoot Lens staff triage tools. Only offered when the credential has the triage scope.', scope: 'triage' },
 };
 
-/** Toolsets that need a scope on the credential. */
-const REQUIRED_SCOPE: Partial<Record<Toolset, string>> = { annotate: 'annotate', configure: 'configure', sites: 'sites:create', issues: 'triage' };
-const DEFAULTS: readonly Toolset[] = ['read', 'replay', 'install', 'feedback'];
+/** Staff-only discovery remains separate from the customer catalog. */
+const REQUIRED_SCOPE: Partial<Record<Toolset, string>> = { issues: 'triage' };
+const DEFAULTS: readonly Toolset[] = ['read', 'replay', 'annotate', 'configure', 'install', 'sites', 'feedback'];
 
 export interface ToolsetRequest {
   /** What the person asked for. Absent means the defaults. */
   requested?: readonly Toolset[] | undefined;
-  /** The scopes the credential holds, when known. Unknown means annotate is offered (the API still decides each call). */
+  /** The scopes the credential holds, when known. Used to limit staff-only discovery, never to grant execution. */
   scopes?: readonly string[] | undefined;
 }
 
@@ -54,8 +55,8 @@ export const unknownToolsetsMessage = (unknown: string[]) =>
 
 /** The toolsets to offer, in a fixed order. */
 export function enabledToolsets({ requested, scopes }: ToolsetRequest): Set<Toolset> {
-  const holds = (scope: string) => scopes === undefined ? scope !== 'triage' && scope !== 'sites:create' : scopes.includes(scope);
-  const base = requested ?? [...DEFAULTS, 'annotate' as const, 'configure' as const, 'sites' as const, 'issues' as const];
+  const holds = (scope: string) => scopes?.includes(scope) ?? false;
+  const base = requested ?? [...DEFAULTS, 'issues' as const];
   return new Set(TOOLSETS.filter(toolset => base.includes(toolset) && (REQUIRED_SCOPE[toolset] === undefined || holds(REQUIRED_SCOPE[toolset]!))));
 }
 

@@ -100,6 +100,9 @@ export class Api {
       if (scope === 'sites:create') {
         return new ToolError(`${tool} was refused (403): ${apiMessage ?? 'This connection cannot create sites'}. Sign in as the verified account owner and explicitly approve sites:create for all sites. Personal access tokens and project-pinned connections cannot create sites.`, 'missing_scope', 403);
       }
+      if (apiMessage && /role on this (project|site)|your role does not permit/i.test(apiMessage)) {
+        return new ToolError(`${tool} was refused (403): ${apiMessage}. Ask the site owner to review your access to this site.`, 'missing_scope', 403);
+      }
       // Settings tools can only make privacy stricter. Say so plainly rather than hinting at a missing scope.
       if (detail?.code === 'privacy_weakening_refused') {
         return new ToolError(`${tool} was refused (403): ${apiMessage ?? 'it would make privacy looser'}. Nothing was changed. The site owner can make this change in Hoot Lens settings.`, 'privacy_weakening_refused', 403);

@@ -4,7 +4,7 @@ import { registerApps } from './apps.js';
 import { buildInstructions } from './instructions.js';
 import { registerPrompts } from './prompts.js';
 import { registerResources } from './resources.js';
-import { registerTools } from './tools.js';
+import { registerTools, type ToolAuthorization } from './tools.js';
 import { enabledToolsets, type Toolset } from './toolsets.js';
 import { MCP_PACKAGE_VERSION } from './version.js';
 
@@ -25,8 +25,10 @@ export interface ServerConfig {
   pinnedProject?: string | undefined;
   /** The toolsets the person asked for. Absent means the defaults. */
   toolsets?: readonly Toolset[] | undefined;
-  /** The scopes the credential holds, when known. Toolsets they cannot use are not offered. */
+  /** The effective scopes, when known. Staff-only tools are omitted when the credential lacks them. */
   scopes?: readonly string[] | undefined;
+  /** Verified OAuth grant scopes and the resource's public metadata URL, supplied only by the hosted route. */
+  authorization?: ToolAuthorization | undefined;
   /** Tools to leave out of an otherwise enabled toolset. */
   hide?: readonly string[] | undefined;
   /** The origin of the API's signed asset proxy. The replay and heatmap views are allowed to load page assets from it and nothing else. */
@@ -49,6 +51,7 @@ const HOUR_MS = 3_600_000;
 export function createHootLensServer(call: ApiFetch, config: ServerConfig): McpServer {
   const toolsets = enabledToolsets({ requested: config.toolsets, scopes: config.scopes });
   if (config.pinnedProject || config.notice) toolsets.delete('sites');
+  if (config.notice) for (const set of ['annotate', 'configure', 'issues'] as const) toolsets.delete(set);
   const api = new Api(call, config.surface, config.pinnedProject);
   const server = new McpServer({ ...MCP_SERVER_INFO, icons: MCP_SERVER_ICONS }, {
     instructions: config.notice ? `${config.notice}\n\n${buildInstructions(toolsets, config.pinnedProject)}` : buildInstructions(toolsets, config.pinnedProject),
@@ -63,7 +66,10 @@ export function createHootLensServer(call: ApiFetch, config: ServerConfig): McpS
       'resources/templates/list': { ttlMs: HOUR_MS, cacheScope: 'private' },
     },
   });
-  registerTools(server, api, { assetOrigin: config.assetOrigin, pinnedProject: config.pinnedProject, toolsets, hide: config.hide ? new Set(config.hide) : undefined, notice: config.notice, onToolResult: config.onToolResult });
+  const tools = registerTools(server, api, { assetOrigin: config.assetOrigin, pinnedProject: config.pinnedProject, toolsets, hide: config.hide ? new Set(config.hide) : undefined, notice: config.notice, onToolResult: config.onToolResult, authorization: config.authorization });
+  // SDK 2.3 keeps extension metadata but drops top-level securitySchemes in registerTool. Its public low-level
+  // presenter supplies both forms, so OpenAI's scanner and other clients see the same explicit auth policy.
+  server.server.setRequestHandler('tools/list', () => ({ tools: tools() }));
   registerPrompts(server, toolsets, config.pinnedProject);
   registerResources(server, api, config.pinnedProject);
   registerApps(server, { assetOrigin: config.assetOrigin });

@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/server';
+import type { McpServer, Tool } from '@modelcontextprotocol/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { labelVersions } from '@hootlens/core/version-labels';
@@ -192,6 +192,19 @@ export interface ToolOptions {
   hide?: ReadonlySet<string> | undefined;
   /** A sentence added after every tool result, for a server whose data needs a standing caveat (the public demo's sample data). */
   notice?: string | undefined;
+  authorization?: ToolAuthorization | undefined;
+}
+
+/** Server-owned OAuth facts. The grant's scopes stay separate from current site-role permissions. */
+export interface ToolAuthorization { grantedScopes: readonly string[]; resourceMetadataUrl: string }
+type SecurityScheme = { type: 'oauth2'; scopes: string[] } | { type: 'noauth' };
+type AdvertisedTool = Tool & { securitySchemes: SecurityScheme[] };
+
+function authorizationChallenge(auth: ToolAuthorization, required: readonly string[], invalid = false): string {
+  const known = new Set(['read', 'replay', 'annotate', 'configure', 'sites:create', 'triage']);
+  const scopes = [...new Set([...auth.grantedScopes, ...required])].filter(scope => known.has(scope));
+  const metadata = auth.resourceMetadataUrl.replace(/["\\]/g, '\\$&');
+  return `Bearer resource_metadata="${metadata}", error="${invalid ? 'invalid_token' : 'insufficient_scope'}", error_description="Reconnect Hoot Lens and approve the permissions for this action", scope="${scopes.join(' ')}"`;
 }
 
 const projectLink = (project: { id: string; name?: string }): ResourceLinkItem => ({ type: 'resource_link', uri: `hootlens://projects/${project.id}`, name: project.name ?? project.id, description: 'Project summary', mimeType: 'application/json' });
@@ -257,23 +270,32 @@ const recordingLinksOf = (projectId: string, errors: { examples: { recordingId?:
   [...new Set(errors.flatMap(error => error.examples.map(example => example.recordingId).filter((value): value is string => typeof value === 'string')))].slice(0, 5).map(rid => recordingLink(projectId, rid));
 
 /** Registers the Hoot Lens tools the options allow on `server`, in a fixed order so tools/list is deterministic. */
-export function registerTools(server: McpServer, api: Api, options: ToolOptions): void {
+export function registerTools(server: McpServer, api: Api, options: ToolOptions): () => AdvertisedTool[] {
   const pinned = options.pinnedProject;
   const projectArg = (pinned ? id.optional().describe(`The project ID. Defaults to the pinned project ${pinned}.`) : id.describe('The project ID')) as unknown as typeof id;
+  const catalog: (() => AdvertisedTool)[] = [];
 
   function tool<Shape extends z.ZodRawShape>(name: ToolName, def: ToolDef<Shape>, handler: (args: z.infer<z.ZodObject<Shape>>, t: ToolContext) => Promise<ToolOutput>): void {
     if (!(def.always || options.toolsets.has(def.toolset)) || options.hide?.has(name)) return;
     if (def.toolset === 'sites' && (pinned || options.notice)) return;
-    server.registerTool(name, {
+    const required = [...new Set(['read', ...(def.scope ? [def.scope] : def.toolset === 'issues' ? ['triage'] : [])])];
+    const securitySchemes: SecurityScheme[] = options.notice ? [{ type: 'noauth' }] : [{ type: 'oauth2', scopes: required }];
+    const meta = { securitySchemes, ...(name in APP_TOOLS ? toolUiMeta(APP_TOOLS[name]!) : name === APP_ONLY_TOOL ? appOnlyMeta() : {}) };
+    const annotations = { title: def.title, ...(def.annotations ?? {}) };
+    const registered = server.registerTool(name, {
       title: def.title,
       description: def.description,
       inputSchema: def.input,
       outputSchema: outputSchemas[name],
-      annotations: { title: def.title, ...(def.annotations ?? {}) },
+      annotations,
+      securitySchemes,
       // MCP Apps: a pointer to the view that shows this tool's result, or the marker that only a view calls this tool.
-      ...(name in APP_TOOLS ? { _meta: toolUiMeta(APP_TOOLS[name]!) } : name === APP_ONLY_TOOL ? { _meta: appOnlyMeta() } : {}),
+      _meta: meta,
     } as never, (async (rawArgs: Record<string, unknown>) => {
       try {
+        if (options.authorization && required.some(scope => !options.authorization!.grantedScopes.includes(scope))) {
+          throw new ToolError(`${def.title} needs your explicit permission. Reconnect Hoot Lens to approve ${required.filter(scope => !options.authorization!.grantedScopes.includes(scope)).join(', ')}. Nothing was changed.`, 'missing_scope', 403);
+        }
         const args = { ...rawArgs };
         if (def.scoped) {
           const projectId = typeof args.projectId === 'string' ? args.projectId : pinned;
@@ -295,9 +317,19 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
           // The view needs the project of a result when the model named none (a pinned project). It travels in _meta, which the model does not read, so the text and the data are as they were.
           ...(name in APP_TOOLS && typeof args.projectId === 'string' ? { _meta: { 'com.hootlens/app': { projectId: args.projectId } } } : {}) };
       } catch (error) {
-        return errorResult(error);
+        const result = errorResult(error);
+        if (options.authorization && error instanceof ToolError && (error.code === 'unauthenticated' || (error.code === 'missing_scope' && required.some(scope => !options.authorization!.grantedScopes.includes(scope))))) {
+          return { ...result, _meta: { ...result._meta, 'mcp/www_authenticate': [authorizationChallenge(options.authorization, required, error.code === 'unauthenticated')] } };
+        }
+        return result;
       }
     }) as never);
+    // Convert only during discovery. Hosted calls build a server per request and do not need every input schema.
+    catalog.push(() => ({
+      name, title: def.title, description: def.description, annotations, _meta: meta, securitySchemes,
+      inputSchema: z.toJSONSchema(def.input, { target: 'draft-2020-12', io: 'input' }) as Tool['inputSchema'],
+      outputSchema: registered?.outputSchemaJson ?? z.toJSONSchema(outputSchemas[name], { target: 'draft-2020-12', io: 'output' }),
+    }));
   }
   tool('whoami', {
     toolset: 'read', always: true, title: 'Check the connection',
@@ -327,11 +359,17 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
       credentialKind: credential.kind ?? 'unknown', ...(credential.name ? { connection: credential.name } : {}), ...(credential.client ? { client: credential.client } : {}),
     };
     const scopes = credential.scopes ?? [];
-    const summary = `Connected. ${signedInAs.email ?? (credential.name ? `Signed in through ${credential.name}` : 'Signed in')}, with ${scopes.length ? `the ${scopes.join(', ')} scope${scopes.length === 1 ? '' : 's'}` : 'no scopes'}. ${sites.length ? `${sites.length} site${sites.length === 1 ? '' : 's'}: ${sites.map(site => `${site.name ?? site.id} (${site.id}, ${site.role ?? 'member'})`).join(', ')}.` : 'No sites are reachable with this connection.'}`;
+    const summary = `Connected. ${signedInAs.email ?? (credential.name ? `Signed in through ${credential.name}` : 'Signed in')}, with ${scopes.length ? `the ${scopes.join(', ')} scope${scopes.length === 1 ? '' : 's'}` : 'no scopes'}. ${sites.length ? `${sites.length} site${sites.length === 1 ? '' : 's'}: ${sites.map(site => `${site.name ?? site.id} (${site.id}, ${site.role ?? 'member'})`).join(', ')}.` : 'No sites are reachable with this connection. Ask which website the owner wants to add or whether an existing site needs to be selected when reconnecting.'}`;
     return out({
       connected: true, summary, signedInAs, scopes,
       siteAccess: credential.projects === undefined || credential.projects === 'all' ? 'all your sites' : `${credential.projects.length} chosen site${credential.projects.length === 1 ? '' : 's'}`,
       sites, ...(pinned ? { pinnedProjectId: pinned } : {}), toolsets: [...options.toolsets],
+      ...(!sites.length && !pinned ? { next: [
+        'Ask for the intended website URL and platform. Connection approval alone does not create a website or install its tracker.',
+        ...(options.toolsets.has('sites') ? ['When the owner asks to add it, call create_site with a stable idempotencyKey. If explicit site-creation permission is missing, the tool will request reconnection before it can create anything.'] : []),
+        'The owner can also add a website in https://hootlens.com/app, then reconnect and share only that site with read/replay access.',
+        'After the site exists, get its installation snippet, install on the intended public pages with visitor consent, and check_install. Never describe site creation as a completed installation.',
+      ] } : {}),
     }, sites.map(projectLink));
   });
 
@@ -393,7 +431,7 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
 
   tool('start_setup', {
     toolset: 'install', title: 'Start setup for a site',
-    description: `Starts a Hoot Lens setup for a website that has no Hoot Lens site (project) yet. It needs no account or sign-in. Takes the owner's email address and the site address. Hoot Lens emails that person ONE link ("Confirm that <agent name> may set up Hoot Lens for <site>"). The project does not exist, and nothing is recorded, until they open it. The result has the exact install tag, where it goes, a claimId and a pollToken. The tag is safe to commit because the project id is public. Until the person confirms, the collector refuses the tag's data with project_pending and Hootlens.status() reports reason project-pending. The pollToken is a secret. Limit: 5 requests an hour per address and per network. It returns no access token; after confirmation, the Hoot Lens MCP server's normal sign-in reads the data.`,
+    description: `Starts an email-confirmed Hoot Lens setup for a website that has no Hoot Lens site (project) yet. The hosted MCP connector requires a Hoot Lens connection first; this tool does not bypass that sign-in. This email alternative takes the owner's email address and site address. Hoot Lens emails that person ONE confirmation link. The project does not exist, and nothing is recorded, until they open it. The result has the exact install tag, where it goes, a claimId and a pollToken. The tag is safe to commit because the project id is public. Until the owner confirms, the collector refuses the tag's data with project_pending and Hootlens.status() reports reason project-pending. The pollToken is a secret. Limit: 5 requests an hour per address and per network. It returns no access token.`,
     input: z.object({
       email: z.string().trim().email().max(254).describe('The email address of the person who owns the website and will confirm. The confirmation link is sent only to this address.'),
       siteOrigin: z.string().trim().min(1).max(300).describe('The site to measure, such as https://www.example.com. Only the origin is used. The scheme is https, except http://localhost for testing on this computer.'),
@@ -409,7 +447,7 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
 
   tool('check_setup', {
     toolset: 'install', title: 'Check a setup request',
-    description: `Checks the status of a setup that was started without an account. Takes the claimId and pollToken from the start response. Returns status "pending" (the person has not opened the confirmation link yet), "confirmed" or "expired". When confirmed it returns the projectId, the dashboard link and an install summary: whether the tag has loaded, whether the first batch of data has arrived, any recent refusals by reason, and the next step. The tag stops until the next page load after a project_pending refusal. When expired, nothing was created. It returns no access token.`,
+    description: `Checks an email-confirmed setup request. The hosted MCP connector requires a Hoot Lens connection first. Takes the claimId and pollToken from the start response. Returns status "pending" (the owner has not opened the confirmation link yet), "confirmed" or "expired". When confirmed it returns the projectId, dashboard link and an install summary: whether the tag has loaded, whether the first data arrived, recent refusals and the next step. The tag stops until the next page load after a project_pending refusal. When expired, nothing was created. It returns no access token.`,
     input: z.object({
       claimId: z.string().uuid().describe('The claimId returned when the setup started.'),
       pollToken: z.string().regex(/^hl_clp_[A-Za-z0-9_-]{43}$/).describe('The pollToken returned when the setup started. A secret.'),
@@ -891,4 +929,5 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
     annotations: writes,
   }, async ({ issueId, duplicateOf, ...body }, t) => out(await t.issue('PATCH', issuePath(issueId), { body: { ...body, ...(duplicateOf !== undefined ? { duplicateOf: duplicateOf === null ? null : String(duplicateOf) } : {}) } })));
 
+  return () => catalog.map(describe => describe());
 }

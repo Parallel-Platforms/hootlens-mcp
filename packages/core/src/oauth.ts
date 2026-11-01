@@ -20,6 +20,8 @@ export const OAUTH_REFRESH_GRACE_MS = 10_000;
 export const OAUTH_CODE_TTL_MS = 5 * 60_000;
 /** How long a person has to decide on the consent page. */
 export const OAUTH_REQUEST_TTL_MS = 10 * 60_000;
+/** An owner-bound, undecided request may be renewed only inside this original lifetime. */
+export const OAUTH_REQUEST_HARD_TTL_MS = 30 * 60_000;
 /** A registered client is removed this long after it was last used (registration counts), which is longer than a refresh token lives. */
 export const OAUTH_CLIENT_IDLE_MS = 90 * 86_400_000;
 /** Revoked grants stay listed in the store this long, then the Firestore TTL policy removes them. */
@@ -85,6 +87,13 @@ export interface OAuthGrantRecord {
   createdAt: number;
   /** Written at most once an hour. */
   lastUsedAt?: number;
+  /** Present only for grants created with lifecycle instrumentation. Never inferred for older grants. */
+  firstUsedAt?: number;
+  /** Internal lifecycle receipt reference, never included in account/admin responses. */
+  lifecycleId?: string;
+  /** Safe issuance checkpoints recorded with the initial access/refresh token pair. Older grants omit them. */
+  exchangeTracked?: boolean;
+  exchangedAt?: number;
   revokedAt?: number;
   revokedReason?: 'user' | 'reuse' | 'superseded' | 'exchange';
   /** Projects an audit event was written for at grant time, so revoking can write the same ones. */
@@ -114,6 +123,12 @@ export interface OAuthRequestRecord {
   /** Hash of the one-time token the consent page sends back with the decision. */
   nonceHash?: string;
   decidedAt?: number;
+}
+
+/** Invalid stored clock values can never produce a renewable authorization request. */
+export function oauthRequestHardExpiry(request: Pick<OAuthRequestRecord, 'createdAt' | 'expiresAt'>, now: number): number {
+  return Number.isFinite(now) && Number.isFinite(request.createdAt) && Number.isFinite(request.expiresAt) && request.createdAt >= 0 && request.createdAt <= now && request.expiresAt >= request.createdAt
+    ? request.createdAt + OAUTH_REQUEST_HARD_TTL_MS : 0;
 }
 
 export interface OAuthCodeRecord {
@@ -172,6 +187,16 @@ export interface OAuthConsentView {
   /** Send back with the decision. Single use. */
   nonce: string;
   expiresAt: number;
+  /** Authenticated continuation reference. It cannot claim an unbound authorization request. */
+  continuationId?: string;
+  hardExpiresAt?: number;
+  status?: 'ready' | 'expired';
+  renewable?: boolean;
+}
+
+export interface OAuthPendingRequestsView {
+  requests: Array<Pick<OAuthConsentView, 'client'> & { continuationId: string; expiresAt: number; hardExpiresAt: number; status: 'ready' | 'expired'; renewable: boolean }>;
+  complete: boolean;
 }
 
 export const oauthDecisionSchema = z.object({

@@ -2,7 +2,15 @@
 
 All notable changes to `@hootlens/mcp` are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
-## [1.3.0] - Unreleased
+## [1.4.0] - Unreleased
+
+### Changed
+
+- Customer tools remain discoverable when an app needs additional permission to use them. Hosted tools publish explicit OAuth policies and return a permission request before performing an unauthorized action. Site creation still requires explicit account-level approval, a verified owner, an available site slot, and a stable retry key.
+- New-account guidance separates connecting an app, adding a website, installing its tracking tag, and confirming permitted recording data. Hosted email setup accurately describes the account connection it requires.
+- Staff-only and intentionally restricted demo or project-pinned tools remain excluded from those catalogs. Current site permissions and credential limits continue to apply to every action.
+
+## [1.3.0] - 2026-10-29
 
 ### Added
 
