@@ -1,6 +1,6 @@
 # Public MCP releases
 
-Source 1.4.0 is prepared for review. Its imported inventory and preparation-time changelog do not claim npm publication, hosted deployment, client compatibility, or security certification.
+Version 1.4.0 is published with stable customer-tool discovery, explicit per-tool OAuth policies, and npm provenance. Its [versioned release record](RELEASE-1.4.0.md) binds the reviewed public source, Linux/Windows Node 20/22 validation, workflow, attestation, and isolated-install checks. The official MCP Registry accepted active 1.4.0, with exact-version and latest entries verified. The hosted service releases separately.
 
 Version 1.3.0 is published with conversion outcome reports, replay preservation coverage, and npm provenance. Its [versioned release record](RELEASE-1.3.0.md) binds the exact public source, workflow, attestation, and isolated-install checks. The official MCP Registry accepted active version 1.3.0, with exact-version and latest entries verified.
 
