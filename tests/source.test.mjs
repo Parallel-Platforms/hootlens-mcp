@@ -18,7 +18,8 @@ test('compiled SDK discovery explicitly classifies every tool across toolsets an
   const mutating = new Set(['create_site', 'start_setup', 'add_note', 'log_change', 'apply_settings_change', 'submit_issue', 'submit_issues', 'reply_issue', 'claim_issue', 'set_issue_status', 'update_issue', 'explain_snags']);
   const external = new Set(['check_install', 'start_setup', 'check_setup', 'explain_snags']);
   const calls = [];
-  const scopes = ['read', 'replay', 'annotate', 'configure', 'sites:create', 'triage'];
+  const fullScopes = ['read', 'replay', 'annotate', 'configure', 'sites:create', 'triage'];
+  let scopes = fullScopes;
   const api = createServer((request, response) => {
     calls.push({ method: request.method, path: request.url });
     response.setHeader('Content-Type', 'application/json');
@@ -35,17 +36,28 @@ test('compiled SDK discovery explicitly classifies every tool across toolsets an
     ...toolsets.map(toolset => ({ name: `individual ${toolset}`, args: ['--toolsets', toolset] })),
     { name: 'all', args: ['--toolsets', 'all'] },
     { name: 'default', args: [] },
+    { name: 'explicit default', args: ['--toolsets', 'default'] },
+    { name: 'read-only default', args: [], scopes: ['read', 'replay'] },
+    { name: 'read-only all', args: ['--toolsets', 'all'], scopes: ['read', 'replay'] },
     { name: 'read and replay', args: ['--toolsets', 'read,replay'] },
     { name: 'pinned all', args: ['--toolsets', 'all', '--project', 'proj_fixture'] },
   ];
   try {
     for (const profile of profiles) {
+      scopes = profile.scopes ?? fullScopes;
       const client = new Client({ name: 'compiled-safety-fixture', version: '1' });
       const transport = new StdioClientTransport({ command: process.execPath, args: [cli, ...profile.args], cwd: root,
         env: { ...cleanEnv, HOOTLENS_PAT: 'synthetic_annotations_fixture', HOOTLENS_API_URL: `http://127.0.0.1:${address.port}` }, stderr: 'pipe' });
       try {
         await client.connect(transport, { timeout: 5_000 });
+        const delivered = [];
+        const onmessage = transport.onmessage;
+        transport.onmessage = (message, extra) => {
+          if (Array.isArray(message.result?.tools)) delivered.push(...message.result.tools);
+          onmessage?.(message, extra);
+        };
         const tools = (await client.listTools({}, { timeout: 5_000 })).tools;
+        assert.equal(delivered.length, tools.length, `${profile.name}: checks use the actual stdio tools/list response`);
         assert.ok(tools.some(tool => tool.name === 'whoami'), `${profile.name}: connection check is present`);
         for (const tool of tools) {
           assert.ok(tool.annotations, `${tool.name}: annotations are returned through the SDK`);
@@ -56,12 +68,30 @@ test('compiled SDK discovery explicitly classifies every tool across toolsets an
           assert.equal(tool.annotations.readOnlyHint, !mutating.has(tool.name), `${tool.name}: read/write classification`);
           assert.equal(tool.annotations.destructiveHint, tool.name === 'apply_settings_change', `${tool.name}: destructive classification`);
           assert.equal(tool.annotations.openWorldHint, external.has(tool.name), `${tool.name}: external-system classification`);
+          const policy = tool._meta?.securitySchemes;
+          assert.ok(Array.isArray(policy) && policy.length === 1, `${tool.name}: OAuth policy is advertised`);
+          assert.equal(policy[0].type, 'oauth2');
+          assert.ok(policy[0].scopes.includes('read'), `${tool.name}: account connection is required`);
+          assert.deepEqual(delivered.find(item => item.name === tool.name).securitySchemes, policy, `${tool.name}: top-level and compatibility policies match on the wire`);
         }
         if (profile.name === 'all') {
           assert.ok(tools.length >= 40, 'the compiled server offers every tool definition');
           for (const name of [...mutating, ...external]) assert.ok(tools.some(tool => tool.name === name), `${name}: override is covered`);
           assert.equal(tools.find(tool => tool.name === 'create_site').annotations.idempotentHint, true);
           assert.equal(tools.find(tool => tool.name === 'explain_snags').annotations.idempotentHint, false);
+        }
+        if (['default', 'explicit default', 'read-only default', 'read-only all'].includes(profile.name)) {
+          for (const name of ['create_site', 'add_note', 'log_change', 'get_site_settings', 'preview_settings_change', 'apply_settings_change', 'get_recording', 'load_replay', 'start_setup']) {
+            assert.ok(tools.some(tool => tool.name === name), `${profile.name}: ${name} remains discoverable before an optional grant`);
+          }
+          if (profile.name !== 'default') assert.ok(!tools.some(tool => tool.name === 'triage_queue'), `${profile.name}: staff triage is not added by default or by a customer scope`);
+          const expected = {
+            create_site: ['read', 'sites:create'], add_note: ['read', 'annotate'], log_change: ['read', 'annotate'],
+            get_site_settings: ['read', 'configure'], preview_settings_change: ['read', 'configure'], apply_settings_change: ['read', 'configure'],
+            get_recording: ['read', 'replay'], load_replay: ['read', 'replay'], start_setup: ['read'], get_session_narrative: ['read'],
+          };
+          for (const [name, required] of Object.entries(expected)) assert.deepEqual(tools.find(tool => tool.name === name)._meta.securitySchemes[0].scopes, required, `${name}: advertised least privilege`);
+          assert.match(tools.find(tool => tool.name === 'start_setup').description, /hosted.*sign|sign.*hosted/i, 'hosted setup does not promise anonymous MCP access');
         }
         if (profile.name === 'pinned all') assert.ok(!tools.some(tool => tool.name === 'create_site'), 'metadata does not widen pinned-site access');
       } finally { await client.close(); }
@@ -216,8 +246,8 @@ test('the release sources match the recorded snapshot, including shared imports'
   const source = JSON.parse(await readFile(new URL('../docs/SOURCE.json', import.meta.url), 'utf8'));
   const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   const server = JSON.parse(await readFile(new URL('../server.json', import.meta.url), 'utf8'));
-  assert.equal(source.version, '1.3.0');
-  assert.equal(source.sourceCommit, 'f591dc2f0e560dd676d93566ad85617ae8b8859a');
+  assert.equal(source.version, '1.4.0');
+  assert.equal(source.sourceCommit, 'cb61a28ece47cbd1cb9cca1a11aa9ae58b6fac1e');
   assert.equal(source.sourceUpdates, undefined, 'This release imports one complete immutable source commit');
   assert.equal(Object.keys(source.files).length, 85);
   assert.ok(source.files['src/cli/doctor.ts']);
@@ -250,18 +280,29 @@ test('the release sources match the recorded snapshot, including shared imports'
 test('the compiled server gates account setup and preserves its retry and consent contract', { timeout: 30_000 }, async () => {
   let mode = 'oauth';
   const creates = [];
+  const attempts = [];
+  const reused = new Map();
   const api = createServer(async (request, response) => {
     response.setHeader('Content-Type', 'application/json');
     if (request.url === '/v1/access') {
       if (mode === 'unknown') return response.writeHead(403).end('{}');
       return response.end(JSON.stringify({ account: { id: 'synthetic-owner' }, credential: {
-        kind: mode, projects: 'all', scopes: mode === 'oauth' ? ['read', 'sites:create'] : ['read'],
+        kind: mode === 'readonly-oauth' ? 'oauth' : mode, projects: 'all', scopes: mode === 'oauth' ? ['read', 'sites:create'] : ['read'],
       }, projects: [] }));
     }
     if (request.url === '/v1/projects' && request.method === 'POST') {
       let raw = '';
       for await (const chunk of request) raw += chunk;
-      creates.push({ body: JSON.parse(raw), key: request.headers['idempotency-key'] });
+      const entry = { body: JSON.parse(raw), key: request.headers['idempotency-key'] };
+      attempts.push({ mode, ...entry });
+      if (mode !== 'oauth') return response.writeHead(403).end(JSON.stringify({ error: 'Explicit OAuth site creation permission is required' }));
+      const prior = reused.get(entry.key);
+      if (prior) {
+        if (JSON.stringify(prior.body) !== JSON.stringify(entry.body)) return response.writeHead(409).end(JSON.stringify({ error: 'Creation request differs from the original request' }));
+        return response.end(JSON.stringify({ project: { id: 'proj_created', name: 'Synthetic site' } }));
+      }
+      reused.set(entry.key, entry);
+      creates.push(entry);
       return response.writeHead(201).end(JSON.stringify({ project: { id: 'proj_created', name: 'Synthetic site' } }));
     }
     if (request.url?.startsWith('/v1/projects/proj_created/install-snippet')) return response.end(JSON.stringify({ tag: '<script data-project="proj_created"></script>', consent: 'required' }));
@@ -292,14 +333,37 @@ test('the compiled server gates account setup and preserves its retry and consen
       assert.equal(result.structuredContent.setupStatus.site, 'created');
       assert.equal(result.structuredContent.setupStatus.recording, 'not_checked');
       assert.ok(result.structuredContent.next.some(step => step.includes('read and install toolsets')));
+      const retry = await client.callTool({ name: 'create_site', arguments: {
+        name: 'Synthetic site', origins: ['https://synthetic.example'], idempotencyKey: 'compiled-setup-request',
+      } }, undefined, { timeout: 5_000 });
+      assert.ok(!retry.isError);
+      assert.equal(retry.structuredContent.projectId, 'proj_created');
+      assert.equal(creates.length, 1, 'the original request key reuses the first site');
+      const conflict = await client.callTool({ name: 'create_site', arguments: {
+        name: 'Different site', origins: ['https://different.example'], idempotencyKey: 'compiled-setup-request',
+      } }, undefined, { timeout: 5_000 });
+      assert.equal(conflict.isError, true);
+      assert.equal(conflict._meta['hootlens/error'].status, 409);
+      assert.equal(creates.length, 1, 'a conflicting retry creates no replacement');
     });
     const absent = async (_client, tools) => assert.ok(!tools.some(tool => tool.name === 'create_site'));
     await connection(['--project', 'proj_existing', '--toolsets', 'all'], absent);
-    mode = 'pat';
-    await connection(['--toolsets', 'all'], absent);
-    mode = 'unknown';
-    await connection(['--toolsets', 'all'], absent);
-    assert.equal(creates.length, 1, 'negative connections never submit site creation');
+    for (const deniedMode of ['readonly-oauth', 'pat', 'unknown']) {
+      mode = deniedMode;
+      await connection(['--toolsets', 'all'], async (client, tools) => {
+        const create = tools.find(tool => tool.name === 'create_site');
+        assert.ok(create, `${mode}: optional site creation is discoverable`);
+        assert.deepEqual(create._meta.securitySchemes, [{ type: 'oauth2', scopes: ['read', 'sites:create'] }]);
+        assert.ok(!tools.some(tool => tool.name === 'triage_queue'), `${mode}: staff tools remain unavailable`);
+        const denied = await client.callTool({ name: 'create_site', arguments: {
+          name: 'Unauthorized site', origins: ['https://unauthorized.example'], idempotencyKey: `denied-${mode}-request`,
+        } }, undefined, { timeout: 5_000 });
+        assert.equal(denied.isError, true, `${mode}: API authority is enforced on execution`);
+        assert.equal(denied._meta['hootlens/error'].status, 403);
+        assert.equal(creates.length, 1, `${mode}: denied calls create no site`);
+      });
+    }
+    assert.deepEqual(attempts.map(attempt => attempt.mode), ['oauth', 'oauth', 'oauth', 'readonly-oauth', 'pat', 'unknown'], 'the fixture verifies real API refusals rather than relying on catalog hiding');
   } finally {
     api.closeAllConnections();
     await new Promise(resolve => api.close(resolve));
@@ -308,7 +372,7 @@ test('the compiled server gates account setup and preserves its retry and consen
 
 test('the standalone bundle reports the prepared version and CLI usage', async () => {
   const version = await run(process.execPath, [cli, '--version'], { cwd: root, env: cleanEnv, timeout: 10_000 });
-  assert.equal(version.stdout.trim(), '1.3.0');
+  assert.equal(version.stdout.trim(), '1.4.0');
   assert.equal(version.stderr, '');
   const help = await run(process.execPath, [cli, '--help'], { cwd: root, env: cleanEnv, timeout: 10_000 });
   assert.match(help.stdout, /login\|logout\|whoami/);
@@ -333,7 +397,7 @@ test('the standalone doctor runs public probes without bearer and redacts invali
   try {
     const result = await run(process.execPath, [cli, 'doctor', '--json', '--toolsets', 'read,replay'], { cwd: root, env: { ...cleanEnv, HOOTLENS_API_URL: origin, HOOTLENS_PAT: 'synthetic-doctor-secret' }, timeout: 15_000 });
     const report = JSON.parse(result.stdout);
-    assert.equal(report.packageVersion, '1.3.0');
+    assert.equal(report.packageVersion, '1.4.0');
     assert.equal(report.ok, true);
     assert.equal(report.authenticatedMetadataVerified, false);
     assert.equal(report.investigationVerified, false);
@@ -377,7 +441,7 @@ test('the built stdio server discovers read tools, defaults to a pinned project 
   const client = new Client({ name: 'public-source-fixture', version: '1.0.0' });
   try {
     await client.connect(transport, { timeout: 10_000 });
-    assert.equal(client.getServerVersion()?.version, '1.3.0');
+    assert.equal(client.getServerVersion()?.version, '1.4.0');
     const tools = await client.listTools({ cursor: '' }, { timeout: 5_000 });
     assert.ok(tools.tools.some(tool => tool.name === 'list_recordings'));
     assert.ok(!tools.tools.some(tool => ['add_note', 'log_change', 'configure', 'submit_issue'].includes(tool.name)));

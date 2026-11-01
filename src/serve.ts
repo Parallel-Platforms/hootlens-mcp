@@ -2,7 +2,7 @@ import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { DEFAULT_API_URL, patCredential, type Credential } from './credentials.js';
 import { findPin } from './pin.js';
 import { createHootLensServer } from './server.js';
-import { narrativeHidden, parseToolsets, unavailableToolsets, unknownToolsetsMessage, type Toolset } from './toolsets.js';
+import { parseToolsets, unavailableToolsets, unknownToolsetsMessage, type Toolset } from './toolsets.js';
 import type { ApiFetch } from './api.js';
 import { MCP_PACKAGE_VERSION } from './version.js';
 
@@ -56,15 +56,6 @@ async function credentialScopes(call: ApiFetch): Promise<string[] | undefined> {
   } catch { return undefined; }
 }
 
-/** Tools to leave out because the person behind the credential cannot use them anywhere: no site where they may watch replays means no narratives. */
-async function unusableTools(call: ApiFetch): Promise<string[]> {
-  try {
-    const response = await call('/v1/access', { method: 'GET', timeoutMs: 6000 });
-    if (!response.ok) return [];
-    return narrativeHidden(await response.json());
-  } catch { return []; }
-}
-
 /** The fetch used by the tools: the API origin, the bearer token, one refresh-and-retry after a 401. */
 export function apiFetchFor(base: string, credential: Credential): ApiFetch {
   const send = async (path: string, init: Parameters<ApiFetch>[1]) => fetch(new URL(path, base), {
@@ -106,11 +97,10 @@ export async function runServer(argv: readonly string[], env: Record<string, str
 
   const call = apiFetchFor(base, credential);
   const scopes = await credentialScopes(call);
-  const hidden = await unusableTools(call);
   const missing = unavailableToolsets({ requested: parsed.toolsets, scopes });
   if (missing.length) log(`Not offering ${missing.join(', ')}: the credential lacks the scope they need. Add it in the dashboard under Settings, AI assistant.`);
   if (lookup.pin) log(`Pinned to project ${lookup.pin.projectId} (${lookup.pin.source === 'file' ? lookup.pin.file : lookup.pin.source === 'env' ? 'HOOTLENS_PROJECT' : '--project'}).`);
   log(`Serving ${parsedBase.origin} with ${credential.source}${scopes ? ` (scopes: ${scopes.join(', ')})` : ''}.`);
 
-  serveStdio(() => createHootLensServer(call, { surface: 'stdio', assetOrigin: parsedBase.origin, pinnedProject: lookup.pin?.projectId, toolsets: parsed.toolsets as Toolset[] | undefined, scopes, ...(hidden.length ? { hide: hidden } : {}) }));
+  serveStdio(() => createHootLensServer(call, { surface: 'stdio', assetOrigin: parsedBase.origin, pinnedProject: lookup.pin?.projectId, toolsets: parsed.toolsets as Toolset[] | undefined, scopes }));
 }

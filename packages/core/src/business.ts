@@ -22,7 +22,7 @@ export const businessReportSchema = z.object({
   acquisition: z.object({ cohort: count, rows: z.array(conversion), attribution: z.literal('optional_self_reported'), note: z.string() }),
   activity: z.object({ activeAccounts: count, agentApiAccounts: count, accountDays: count, agentApiDays: count, observedFrom: z.number().nullable(), note: z.string() }),
   investigations: businessInvestigationReportSchema.optional(),
-  coverage: z.object({ accounts: businessCoverageSchema, projects: businessCoverageSchema, billing: businessCoverageSchema, attribution: businessCoverageSchema, origins: businessCoverageSchema.optional(), activity: businessCoverageSchema, investigations: businessCoverageSchema.optional() }),
+  coverage: z.object({ accounts: businessCoverageSchema, projects: businessCoverageSchema, billing: businessCoverageSchema, attribution: businessCoverageSchema, origins: businessCoverageSchema.optional(), activity: businessCoverageSchema, investigations: businessCoverageSchema.optional(), connections: businessCoverageSchema.optional() }),
   limitations: z.array(z.string()),
 });
 export type BusinessReport = z.infer<typeof businessReportSchema>;
@@ -31,6 +31,21 @@ export const businessResponseSchema = z.object({ status: z.enum(['ready', 'build
 export type BusinessResponse = z.infer<typeof businessResponseSchema>;
 
 const timestamp = z.number().finite().nonnegative().nullable();
+export const businessAccountConnectionSchema = z.object({
+  id: z.string().max(100), clientName: z.string().max(100), redirectHost: z.string().max(300),
+  registration: z.enum(['dynamic', 'metadata_document']).optional(), clientIdHost: z.string().max(300).optional(),
+  approvedAt: z.number().finite().nonnegative(), exchangeAt: timestamp, firstUseAt: timestamp, lastUseAt: timestamp, revokedAt: timestamp,
+  revokedReason: z.enum(['user', 'reuse', 'superseded', 'exchange']).optional(),
+  scopes: z.array(z.string().max(60)).max(10), siteAccess: z.enum(['all', 'selected']), siteCount: count.nullable(),
+  lifecycleCoverage: z.enum(['complete', 'partial', 'legacy_unknown']),
+});
+export const businessAccountConnectionsSchema = z.object({
+  coverage: z.enum(['complete', 'partial', 'unavailable']), retentionDays: z.literal(90), historyFrom: timestamp,
+  rows: z.array(businessAccountConnectionSchema).max(25),
+  latest: z.object({ consentViewedAt: timestamp, deniedAt: timestamp, approvedAt: timestamp, exchangeAt: timestamp, exchangeFailedAt: timestamp, firstUseAt: timestamp, lastUseAt: timestamp }),
+});
+export type BusinessAccountConnection = z.infer<typeof businessAccountConnectionSchema>;
+export type BusinessAccountConnections = z.infer<typeof businessAccountConnectionsSchema>;
 export const businessPlanStatusSchema = z.enum(['free', 'paidActive', 'trial', 'complimentary', 'pastDue', 'other', 'unknown']);
 export const businessAccountInsightSchema = z.object({
   id: z.string(), email: z.string().nullable(), displayName: z.string().nullable(), emailVerified: z.boolean(), disabled: z.boolean(),
@@ -42,6 +57,7 @@ export const businessAccountInsightSchema = z.object({
   sites: z.array(z.object({ id: z.string(), name: z.string(), hostnames: z.array(z.string()), createdAt: timestamp, lastConfigFetchAt: timestamp, lastCollectAt: timestamp })).max(2000),
   activity: z.object({ accountDays: count, agentApiDays: count, firstObservedAt: timestamp, lastObservedDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable() }),
   investigations: z.object({ days: count, firstRetainedAt: timestamp, lastObservedDay: day.nullable() }).optional(),
+  connections: businessAccountConnectionsSchema.optional(),
   stage: z.enum(['registered', 'site_created', 'tracker_seen', 'data_accepted', 'evidence_read', 'unknown']),
 });
 export type BusinessAccountInsight = z.infer<typeof businessAccountInsightSchema>;
