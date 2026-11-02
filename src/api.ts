@@ -52,7 +52,7 @@ export class Api {
   }
 
   /** Sends a request and returns the parsed body, or raises a ToolError that says what to do next. */
-  async request(method: 'GET' | 'POST' | 'PATCH', path: string, options: RequestOptions): Promise<{ status: number; body: unknown }> {
+  async request(method: 'GET' | 'POST' | 'PUT' | 'PATCH', path: string, options: RequestOptions): Promise<{ status: number; body: unknown }> {
     const { context } = options;
     let response: ApiResponse;
     try {

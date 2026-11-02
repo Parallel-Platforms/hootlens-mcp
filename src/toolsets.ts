@@ -9,9 +9,9 @@ export const TOOLSETS = ['read', 'replay', 'annotate', 'configure', 'install', '
 export type Toolset = (typeof TOOLSETS)[number];
 
 export const TOOLSET_INFO: Record<Toolset, { summary: string; scope?: string }> = {
-  read: { summary: 'Sites (projects), visits, recording lists, narratives, heatmaps, findings, JavaScript errors, traffic, conversion outcomes, goals, funnels, changes and the weekly summary.' },
+  read: { summary: 'Sites (projects), visits, recording lists, narratives, heatmaps, findings, improvements, saved finding work, JavaScript errors, traffic, conversion outcomes, goals, funnels, changes and the weekly summary.' },
   replay: { summary: 'Raw replay events and clicks of one recording. Needs the replay scope.', scope: 'replay' },
-  annotate: { summary: 'Add notes to recordings and log changes. Execution requires the annotate scope.', scope: 'annotate' },
+  annotate: { summary: 'Add notes, track finding work, and log deployed changes. Execution requires the annotate scope.', scope: 'annotate' },
   configure: { summary: 'Read the site\'s settings, preview a change to page targeting, goals, funnels or privacy, and apply exactly what was previewed. Privacy can only get stricter. Execution requires the configure scope.', scope: 'configure' },
   install: { summary: 'Install tags for a platform and the install checker.' },
   sites: { summary: 'Create a site in the signed-in owner\'s account, within its site allowance. Requires explicit OAuth sites:create permission for all sites and an unpinned connection. Personal access tokens cannot create sites.', scope: 'sites:create' },
