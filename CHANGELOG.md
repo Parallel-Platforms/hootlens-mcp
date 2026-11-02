@@ -2,7 +2,15 @@
 
 All notable changes to `@hootlens/mcp` are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
-## [1.4.1] - Unreleased
+## [1.5.0] - Unreleased
+
+### Added
+
+- `review_improvements` combines version-aware element snags, JavaScript errors, and funnel drop-offs with actual count units, source coverage, replay moments when authorized, and a concrete investigation step.
+- `list_finding_work`, `get_finding_work`, and `list_finding_assignees` expose saved finding progress and a narrow team picker. Retained work stays separate from replay retention and Hoot Lens support reports.
+- `update_finding_work` tracks explicitly authorized assignment, snoozing, dismissal, GitHub references, and deployed fixes. Revision checks prevent concurrent overwrites, and identical operation retries do not duplicate work or deployment markers. A reported fix is separate from a measured before/after outcome.
+
+## [1.4.1] - 2026-11-01
 
 ### Fixed
 

@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { goalSummary, type Goal, type GoalKind } from './changes';
 import { rateSide } from './impact';
+import { improvementContextSchema, improvementGoalDefinitionsSchema, type ImprovementContext } from './improvements';
 
 const ID = /^[a-zA-Z0-9_-]{1,80}$/;
 const idText = z.string().regex(ID);
@@ -20,6 +21,16 @@ export const FUNNEL_MAX_STEPS = 8;
 export const FUNNEL_EXAMPLES = 5;
 /** Sessions that entered a funnel are read up to this many (newest first); beyond it the report says so. */
 export const FUNNEL_MAX_SESSIONS = 5000;
+
+/** Exact entry context is distinct from optional broad filters, including when historical values are unknown. */
+const reportJSONQuery = z.string().max(3000).transform((value, context) => {
+  try { return JSON.parse(value) as unknown; } catch {
+    context.addIssue({ code: 'custom', message: 'Use valid JSON for this report filter.' });
+    return z.NEVER;
+  }
+});
+export const funnelEntryContextQuerySchema = reportJSONQuery.pipe(improvementContextSchema).refine(context => context.release === undefined, 'Funnel entry records do not retain raw release identifiers. Use the recorded page version.');
+export const funnelExpectedGoalsQuerySchema = reportJSONQuery.pipe(improvementGoalDefinitionsSchema);
 
 /** What an owner sends to create or replace a funnel. Each step names a goal that exists in the project. */
 export const funnelInputSchema = z.object({
@@ -41,6 +52,8 @@ export interface FunnelFilters {
   locale?: string;
   variant?: string;
   pageVersion?: string;
+  pageRevision?: string;
+  entryContext?: ImprovementContext;
 }
 
 /** A goal's first hit in one session. */
@@ -49,7 +62,7 @@ export interface FunnelHit { at: number; recordingId?: string; /** Device class 
 export interface FunnelSession {
   sessionId: string;
   hits: Readonly<Record<string, FunnelHit>>;
-  entry: { group?: string; device?: string; variant?: string; locale?: string; version?: string };
+  entry: { group?: string; device?: string; variant?: string; locale?: string; version?: string; /** Absent on historical first-hit records. */ revision?: string };
 }
 
 export interface FunnelRate { rate: number | null; /** 95% Wilson interval. */ interval: [number, number] | null; }
@@ -101,13 +114,31 @@ export interface FunnelStats {
   notes: string[];
 }
 
+export function funnelEntryContext(entry: FunnelSession['entry']): ImprovementContext {
+  const deviceClass = entry.device === 'desktop' || entry.device === 'tablet' || entry.device === 'mobile' ? entry.device : 'unknown';
+  return {
+    pageGroup: entry.group || '(unknown)', version: entry.version ?? '', revision: entry.revision || null,
+    variant: entry.variant ?? '', variantScope: entry.variant ? 'single' : 'unknown', deviceClass,
+    ...(entry.locale ? { locale: entry.locale } : {}),
+  };
+}
+
+export function funnelEntryContextMatches(entry: FunnelSession['entry'], wanted: ImprovementContext): boolean {
+  const actual = funnelEntryContext(entry);
+  return wanted.release === undefined && actual.pageGroup === wanted.pageGroup && actual.version === wanted.version
+    && actual.revision === wanted.revision && actual.variant === wanted.variant && actual.variantScope === wanted.variantScope
+    && actual.deviceClass === wanted.deviceClass && actual.locale === wanted.locale;
+}
+
 export function entryMatches(session: FunnelSession, filters: FunnelFilters): boolean {
   const entry = session.entry;
   return (filters.pageGroup === undefined || entry.group === filters.pageGroup)
     && (filters.deviceClass === undefined || entry.device === filters.deviceClass)
     && (filters.locale === undefined || entry.locale === filters.locale)
     && (filters.variant === undefined || entry.variant === filters.variant)
-    && (filters.pageVersion === undefined || entry.version === filters.pageVersion);
+    && (filters.pageVersion === undefined || entry.version === filters.pageVersion)
+    && (filters.pageRevision === undefined || entry.revision === filters.pageRevision)
+    && (filters.entryContext === undefined || funnelEntryContextMatches(entry, filters.entryContext));
 }
 
 /**

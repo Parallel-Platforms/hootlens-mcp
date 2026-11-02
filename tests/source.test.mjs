@@ -15,7 +15,7 @@ const cli = fileURLToPath(new URL('../dist/cli.mjs', import.meta.url));
 const cleanEnv = Object.fromEntries(['PATH', 'Path', 'SystemRoot', 'TEMP', 'TMP'].filter(key => process.env[key]).map(key => [key, process.env[key]]));
 
 test('compiled SDK discovery explicitly classifies every tool across toolsets and connection profiles', { timeout: 60_000 }, async () => {
-  const mutating = new Set(['create_site', 'start_setup', 'add_note', 'log_change', 'apply_settings_change', 'submit_issue', 'submit_issues', 'reply_issue', 'claim_issue', 'set_issue_status', 'update_issue', 'explain_snags']);
+  const mutating = new Set(['create_site', 'start_setup', 'add_note', 'update_finding_work', 'log_change', 'apply_settings_change', 'submit_issue', 'submit_issues', 'reply_issue', 'claim_issue', 'set_issue_status', 'update_issue', 'explain_snags']);
   const external = new Set(['check_install', 'start_setup', 'check_setup', 'explain_snags']);
   const calls = [];
   const fullScopes = ['read', 'replay', 'annotate', 'configure', 'sites:create', 'triage'];
@@ -81,12 +81,13 @@ test('compiled SDK discovery explicitly classifies every tool across toolsets an
           assert.equal(tools.find(tool => tool.name === 'explain_snags').annotations.idempotentHint, false);
         }
         if (['default', 'explicit default', 'read-only default', 'read-only all'].includes(profile.name)) {
-          for (const name of ['create_site', 'add_note', 'log_change', 'get_site_settings', 'preview_settings_change', 'apply_settings_change', 'get_recording', 'load_replay', 'start_setup']) {
+          for (const name of ['create_site', 'add_note', 'update_finding_work', 'log_change', 'get_site_settings', 'preview_settings_change', 'apply_settings_change', 'get_recording', 'load_replay', 'start_setup']) {
             assert.ok(tools.some(tool => tool.name === name), `${profile.name}: ${name} remains discoverable before an optional grant`);
           }
           if (profile.name !== 'default') assert.ok(!tools.some(tool => tool.name === 'triage_queue'), `${profile.name}: staff triage is not added by default or by a customer scope`);
           const expected = {
             create_site: ['read', 'sites:create'], add_note: ['read', 'annotate'], log_change: ['read', 'annotate'],
+            list_finding_assignees: ['read', 'annotate'], update_finding_work: ['read', 'annotate'],
             get_site_settings: ['read', 'configure'], preview_settings_change: ['read', 'configure'], apply_settings_change: ['read', 'configure'],
             get_recording: ['read', 'replay'], load_replay: ['read', 'replay'], start_setup: ['read'], get_session_narrative: ['read'],
           };
@@ -246,10 +247,10 @@ test('the release sources match the recorded snapshot, including shared imports'
   const source = JSON.parse(await readFile(new URL('../docs/SOURCE.json', import.meta.url), 'utf8'));
   const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   const server = JSON.parse(await readFile(new URL('../server.json', import.meta.url), 'utf8'));
-  assert.equal(source.version, '1.4.1');
-  assert.equal(source.sourceCommit, 'f51a056add607b5bf8847dd03f510447874246f6');
+  assert.equal(source.version, '1.5.0');
+  assert.equal(source.sourceCommit, '402bf27fb94890819711656cd78866fbc76a0eae');
   assert.equal(source.sourceUpdates, undefined, 'This release imports one complete immutable source commit');
-  assert.equal(Object.keys(source.files).length, 86);
+  assert.equal(Object.keys(source.files).length, 88);
   assert.ok(source.files['src/cli/doctor.ts']);
   assert.equal(manifest.version, source.version);
   assert.equal(server.version, source.version);
@@ -426,7 +427,7 @@ test('the compiled setup journey keeps empty accounts connected and requires an 
 
 test('the standalone bundle reports the prepared version and CLI usage', async () => {
   const version = await run(process.execPath, [cli, '--version'], { cwd: root, env: cleanEnv, timeout: 10_000 });
-  assert.equal(version.stdout.trim(), '1.4.1');
+  assert.equal(version.stdout.trim(), '1.5.0');
   assert.equal(version.stderr, '');
   const help = await run(process.execPath, [cli, '--help'], { cwd: root, env: cleanEnv, timeout: 10_000 });
   assert.match(help.stdout, /login\|logout\|whoami/);
@@ -451,7 +452,7 @@ test('the standalone doctor runs public probes without bearer and redacts invali
   try {
     const result = await run(process.execPath, [cli, 'doctor', '--json', '--toolsets', 'read,replay'], { cwd: root, env: { ...cleanEnv, HOOTLENS_API_URL: origin, HOOTLENS_PAT: 'synthetic-doctor-secret' }, timeout: 15_000 });
     const report = JSON.parse(result.stdout);
-    assert.equal(report.packageVersion, '1.4.1');
+    assert.equal(report.packageVersion, '1.5.0');
     assert.equal(report.ok, true);
     assert.equal(report.authenticatedMetadataVerified, false);
     assert.equal(report.investigationVerified, false);
@@ -495,10 +496,10 @@ test('the built stdio server discovers read tools, defaults to a pinned project 
   const client = new Client({ name: 'public-source-fixture', version: '1.0.0' });
   try {
     await client.connect(transport, { timeout: 10_000 });
-    assert.equal(client.getServerVersion()?.version, '1.4.1');
+    assert.equal(client.getServerVersion()?.version, '1.5.0');
     const tools = await client.listTools({ cursor: '' }, { timeout: 5_000 });
     assert.ok(tools.tools.some(tool => tool.name === 'list_recordings'));
-    assert.ok(!tools.tools.some(tool => ['add_note', 'log_change', 'configure', 'submit_issue'].includes(tool.name)));
+    assert.ok(!tools.tools.some(tool => ['add_note', 'update_finding_work', 'log_change', 'configure', 'submit_issue'].includes(tool.name)));
     const projects = await client.callTool({ name: 'list_projects', arguments: {} }, undefined, { timeout: 5_000 });
     assert.equal(projects.isError, undefined);
     assert.equal(projects.structuredContent?.pinnedProjectId, 'proj_fixture');
@@ -515,4 +516,101 @@ test('the built stdio server discovers read tools, defaults to a pinned project 
     api.closeAllConnections();
     await new Promise(resolve => api.close(resolve));
   }
+});
+
+test('compiled improvement tools preserve exact evidence context and retry-safe work requests', { timeout: 30_000 }, async () => {
+  const findingId = `finding_${'a'.repeat(64)}`;
+  const context = { pageGroup: '/book', version: 'page-v3', release: 'release-42', revision: 'revision-3', variant: 'control', variantScope: 'single', deviceClass: 'mobile' };
+  const goalDefinitions = [{ id: 'booking', since: 1 }, { id: 'confirmed', since: 1 }];
+  const work = { id: findingId, projectId: 'proj_fixture', revision: 1, status: 'in_progress', effectiveStatus: 'in_progress', source: { kind: 'javascript-error', context, fingerprint: 'a'.repeat(16) }, history: [], changeAvailable: false };
+  const requests = [];
+  let scopes = ['read', 'annotate'];
+  let applied = 0;
+  const receipts = new Set();
+  const api = createServer(async (request, response) => {
+    response.setHeader('Content-Type', 'application/json');
+    const url = new URL(request.url, 'http://synthetic.example');
+    if (url.pathname === '/v1/access') return response.end(JSON.stringify({
+      credential: { kind: 'pat', scopes }, projects: [{ id: 'proj_fixture', role: 'editor', permissions: scopes }],
+    }));
+    let raw = '';
+    for await (const chunk of request) raw += chunk;
+    const entry = { method: request.method, path: url.pathname, query: Object.fromEntries(url.searchParams), ...(raw ? { body: JSON.parse(raw) } : {}) };
+    requests.push(entry);
+    if (url.pathname === '/v1/projects') return response.end(JSON.stringify({ projects: [{ id: 'proj_fixture', role: 'editor' }] }));
+    if (url.pathname === '/v1/projects/proj_fixture/improvements' && request.method === 'GET') return response.end(JSON.stringify({
+      generatedAt: 2, sources: { elements: { status: 'available', notes: [] }, errors: { status: 'available', notes: [] }, funnels: { status: 'available', notes: [] } },
+      items: [{ id: findingId, kind: 'javascript-error', title: 'Inspect TypeError', observed: 'One recorded page view contained the error.', nextStep: 'Inspect the recorded action.', source: work.source, counts: { value: 1, unit: 'page-views' }, evidence: [], coverage: { status: 'available', notes: [], from: 1, to: 2 }, lastSeenAt: 2 }],
+    }));
+    if (url.pathname === '/v1/projects/proj_fixture/finding-work' && request.method === 'GET') return response.end(JSON.stringify({ items: [work], limit: 500 }));
+    if (url.pathname.endsWith('/finding-work/assignees') && request.method === 'GET') {
+      if (!scopes.includes('annotate')) return response.writeHead(403).end(JSON.stringify({ error: 'Token does not permit annotation' }));
+      return response.end(JSON.stringify({ assignees: [{ userId: 'teammate', name: 'Teammate', role: 'editor' }] }));
+    }
+    if (url.pathname.endsWith(`/finding-work/${findingId}`)) {
+      if (request.method === 'GET') return response.end(JSON.stringify({ work }));
+      if (request.method === 'PUT') {
+        if (!scopes.includes('read') || !scopes.includes('annotate')) return response.writeHead(403).end(JSON.stringify({ error: 'Token does not permit annotation' }));
+        const replayed = receipts.has(entry.body.operationId);
+        if (!replayed) { receipts.add(entry.body.operationId); applied++; }
+        return response.end(JSON.stringify({ work, replayed }));
+      }
+    }
+    if (url.pathname.endsWith(`/errors/${'a'.repeat(16)}`)) return response.end(JSON.stringify({
+      id: 'a'.repeat(16), name: 'TypeError', count: 1, visits: 1, firstSeenAt: 1, lastSeenAt: 2, kind: 'error',
+      releases: [], pageRevisions: [], variants: [], pageGroups: [], deviceClasses: [], followedClicks: [], examples: [], stack: [], mapped: false, cohorts: [],
+    }));
+    if (url.pathname.endsWith('/funnels/booking/stats')) return response.end(JSON.stringify({ steps: [] }));
+    response.writeHead(404).end('{}');
+  });
+  await new Promise(resolve => api.listen(0, '127.0.0.1', resolve));
+  const address = api.address(); assert.ok(address && typeof address === 'object');
+  const input = { findingId, expectedRevision: 0, operationId: 'synthetic_operation_1', action: { type: 'start' } };
+  async function connection(runClient) {
+    const client = new Client({ name: 'compiled-improvement-fixture', version: '1' });
+    const transport = new StdioClientTransport({ command: process.execPath, args: [cli, '--toolsets', 'read,annotate', '--project', 'proj_fixture'], cwd: root,
+      env: { ...cleanEnv, HOOTLENS_PAT: 'synthetic_improvement_fixture', HOOTLENS_API_URL: `http://127.0.0.1:${address.port}` }, stderr: 'pipe' });
+    try { await client.connect(transport, { timeout: 5_000 }); await runClient(client); }
+    finally { await client.close(); }
+  }
+  try {
+    await connection(async client => {
+      const tools = new Map((await client.listTools({}, { timeout: 5_000 })).tools.map(tool => [tool.name, tool]));
+      for (const name of ['review_improvements', 'list_finding_work', 'get_finding_work']) {
+        assert.equal(tools.get(name).annotations.readOnlyHint, true);
+        assert.deepEqual(tools.get(name)._meta.securitySchemes[0].scopes, ['read']);
+      }
+      for (const name of ['list_finding_assignees', 'update_finding_work']) assert.deepEqual(tools.get(name)._meta.securitySchemes[0].scopes, ['read', 'annotate']);
+      assert.equal(tools.get('update_finding_work').annotations.readOnlyHint, false);
+      assert.equal(tools.get('update_finding_work').annotations.idempotentHint, true);
+      const feed = await client.callTool({ name: 'review_improvements', arguments: {} });
+      assert.ok(!feed.isError); assert.deepEqual(feed.structuredContent.items[0].source.context, context);
+      for (const [name, args] of [['list_finding_work', {}], ['get_finding_work', { findingId }], ['list_finding_assignees', {}]]) {
+        assert.ok(!(await client.callTool({ name, arguments: args })).isError);
+      }
+      const first = await client.callTool({ name: 'update_finding_work', arguments: input });
+      const retry = await client.callTool({ name: 'update_finding_work', arguments: input });
+      assert.ok(!first.isError && !retry.isError);
+      assert.equal(first.structuredContent.replayed, false); assert.equal(retry.structuredContent.replayed, true);
+      assert.equal(applied, 1);
+      const error = await client.callTool({ name: 'get_error', arguments: { errorId: 'a'.repeat(16), context, from: 1, to: 2 } });
+      assert.ok(!error.isError);
+      const { release, ...entryContext } = context; void release;
+      const funnel = await client.callTool({ name: 'get_funnel', arguments: { funnelId: 'booking', entryContext, expectedGoals: goalDefinitions, from: 1, to: 2 } });
+      assert.ok(!funnel.isError);
+    });
+    const writes = requests.filter(request => request.method === 'PUT');
+    assert.equal(writes.length, 2); assert.deepEqual(writes[0], writes[1]);
+    assert.deepEqual(writes[0].body, { expectedRevision: 0, operationId: input.operationId, action: input.action });
+    const errorQuery = requests.find(request => request.path.endsWith(`/errors/${'a'.repeat(16)}`)).query;
+    assert.deepEqual(JSON.parse(errorQuery.context), context); assert.equal(errorQuery.from, '1'); assert.equal(errorQuery.to, '2');
+    const funnelQuery = requests.find(request => request.path.endsWith('/funnels/booking/stats')).query;
+    assert.deepEqual(JSON.parse(funnelQuery.expectedGoals), goalDefinitions); assert.equal(JSON.parse(funnelQuery.entryContext).revision, 'revision-3');
+    scopes = ['read'];
+    await connection(async client => {
+      const denied = await client.callTool({ name: 'update_finding_work', arguments: { ...input, operationId: 'synthetic_denied_01' } });
+      assert.equal(denied.isError, true); assert.equal(denied._meta['hootlens/error'].status, 403);
+    });
+    assert.equal(applied, 1, 'a read-only credential performs no work mutation');
+  } finally { api.closeAllConnections(); await new Promise(resolve => api.close(resolve)); }
 });

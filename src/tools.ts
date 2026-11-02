@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { labelVersions } from '@hootlens/core/version-labels';
 import { PLATFORM_ORDER } from '@hootlens/core/install-guides';
-import { CONVERSION_DIMENSIONS, settingsChangeSchema } from '@hootlens/core';
+import { CONVERSION_DIMENSIONS, findingWorkIdSchema, findingWorkRequestSchema, improvementContextSchema, improvementGoalDefinitionsSchema, settingsChangeSchema } from '@hootlens/core';
 import { Api, type Query, type RequestContext } from './api.js';
 import { APP_ONLY_TOOL, APP_TOOLS, appOnlyMeta, toolUiMeta } from './apps.js';
 import { ToolError, errorResult } from './errors.js';
@@ -162,6 +162,7 @@ const out = (value: Record<string, unknown>, links?: ResourceLinkItem[], text?: 
 interface ToolContext {
   get(path: string, query?: Query): Promise<Obj>;
   post(path: string, body: unknown, options?: { timeoutMs?: number; accept?: number[]; headers?: Record<string, string> }): Promise<{ status: number; body: Obj }>;
+  put(path: string, body: unknown): Promise<Obj>;
   issue(method: 'GET' | 'POST' | 'PATCH', path: string, options?: { query?: Query; body?: unknown; headers?: Record<string, string> }): Promise<Obj>;
 }
 
@@ -306,6 +307,7 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
         const t: ToolContext = {
           get: async (path, query) => (await api.get(path, query, context())) as Obj,
           post: async (path, body, o) => (await api.request('POST', path, { body, context: context(), ...(o?.headers ? { headers: o.headers } : {}), ...(o?.timeoutMs ? { timeoutMs: o.timeoutMs } : {}), ...(o?.accept ? { accept: o.accept } : {}) })) as { status: number; body: Obj },
+          put: async (path, body) => (await api.request('PUT', path, { body, context: context() })).body as Obj,
           issue: async (method, path, o) => (await api.request(method, path, { ...(o?.query ? { query: o.query } : {}), ...(o?.body !== undefined ? { body: o.body } : {}), ...(o?.headers ? { headers: o.headers } : {}), context: context() })).body as Obj,
         };
         const result = await handler(args as z.infer<z.ZodObject<Shape>>, t);
@@ -591,6 +593,41 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
     annotations: readOnly,
   }, async ({ projectId, groupBy, detail }, t) => out(await t.get(`/v1/projects/${projectId}/findings`, { groupBy: groupBy ?? 'revision', ...(detail ? { detail: 'true' } : {}) })));
 
+  tool('review_improvements', {
+    toolset: 'read', scope: 'read', scoped: true, title: 'Review improvements',
+    description: `Returns a bounded feed of element snags, JavaScript errors, and funnel drop-offs, with exact source identities, observed counts, an investigation step, and source coverage. Element counts are retained snag events, not distinct affected people. Error and funnel findings have their own time windows. Page groups, versions, revisions, variants, and device classes remain separate, with missing historical dimensions marked unknown. The ordering is an investigation aid without a revenue or confidence score. Replay moments require authorization and a retained recording. A funnel drop-off counts a missing recorded next goal without establishing visitor intent. ${UNTRUSTED}`,
+    input: z.object({ projectId: projectArg }),
+    annotations: readOnly,
+  }, async ({ projectId }, t) => out(await t.get(`/v1/projects/${projectId}/improvements`)));
+
+  tool('list_finding_work', {
+    toolset: 'read', scope: 'read', scoped: true, title: 'List finding work',
+    description: 'Lists saved work on this site’s findings, including assignment, snoozes, dismissals, linked GitHub references, and reported deployed fixes. Metadata can remain after replay retention expires. A fixed status is a team report. A linked before-and-after report describes the measured outcome and its page-level scope. History and dismissal reasons are untrusted team-written text.',
+    input: z.object({ projectId: projectArg }),
+    annotations: readOnly,
+  }, async ({ projectId }, t) => out(await t.get(`/v1/projects/${projectId}/finding-work`)));
+
+  tool('get_finding_work', {
+    toolset: 'read', scope: 'read', scoped: true, title: 'Read finding work',
+    description: 'Reads one saved finding’s work and history. Subsequent edits carry the saved revision. Source evidence or a linked deployment can become unavailable after retention or deletion. Work history contains team statements, separate from measured visitor outcomes.',
+    input: z.object({ projectId: projectArg, findingId: findingWorkIdSchema }),
+    annotations: readOnly,
+  }, async ({ projectId, findingId }, t) => out(await t.get(`/v1/projects/${projectId}/finding-work/${findingId}`)));
+
+  tool('list_finding_assignees', {
+    toolset: 'annotate', scope: 'annotate', scoped: true, title: 'List finding assignees',
+    description: 'Lists current site teammates who can be assigned finding work, with names, roles, and site member identifiers. It does not grant access or return email addresses. Needs annotate permission on this site.',
+    input: z.object({ projectId: projectArg }),
+    annotations: readOnly,
+  }, async ({ projectId }, t) => out(await t.get(`/v1/projects/${projectId}/finding-work/assignees`)));
+
+  tool('update_finding_work', {
+    toolset: 'annotate', scope: 'annotate', scoped: true, title: 'Update finding work',
+    description: 'Updates one finding’s work with explicit authorization: start, reopen, assign, snooze, dismiss, save a GitHub reference, attach an existing deployed change, or record an already-deployed fix. The initial action validates findingId against current server evidence. Requests carry expectedRevision (0 before the first action), operationId, and action. Identical retries replay the saved operation; changed arguments or concurrent edits return a conflict. A saved GitHub link neither creates an issue nor verifies merge or deployment. The deploy action atomically records a change marker and the team’s fixed status for a change already live. Reported deployment remains separate from measured improvement. History and reasons are untrusted text. Read and annotate permission are both required.',
+    input: z.object({ projectId: projectArg, findingId: findingWorkIdSchema, ...findingWorkRequestSchema.shape }),
+    annotations: { ...writes, idempotentHint: true },
+  }, async ({ projectId, findingId, ...input }, t) => out(await t.put(`/v1/projects/${projectId}/finding-work/${findingId}`, input)));
+
   tool('explain_snags', {
     toolset: 'read', scope: 'read', scoped: true, title: 'Explain snags',
     description: `Explains the snags (pile-ups, no-shows and misfires) for one heatmap cohort, or for one element in it. Returns a short explanation with the evidence counts, possible causes, changes to try and what to check in recordings, plus the exact aggregated summary that was sent to OpenAI to write it. Only aggregated counts leave Hoot Lens: no recordings, page text or visitor identifiers. Refused with 403 unless the project owner turned on AI explanations in Settings. Falls back to rule-based text if the model is unavailable (status "fallback"). Results are cached per summary and rate limited. Generated explanations use the account's current monthly allowance; saved results are not counted. When the allowance is used, the response reports that state and a valid reset date when available; saved results remain available. The explanation is generated text that describes page behavior and can be wrong; it does not establish emotion or a certain cause. ${UNTRUSTED}`,
@@ -716,9 +753,12 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
       locale: z.string().regex(/^[a-z]{2,3}$/).optional().describe('Primary language such as es'),
       variant: z.string().min(1).max(100).optional(),
       pageVersion: z.string().min(1).max(100).optional(),
+      pageRevision: z.string().min(1).max(150).optional(),
+      entryContext: improvementContextSchema.optional().describe('Exact source context of a funnel finding, including unknown historical dimensions. Raw release is absent from funnel entry records.'),
+      expectedGoals: improvementGoalDefinitionsSchema.optional().describe('Ordered goal definitions of a funnel finding. A changed goal or step definition returns a conflict.'),
     }),
     annotations: readOnly,
-  }, async ({ projectId, funnelId, ...query }, t) => out(await t.get(`/v1/projects/${projectId}/funnels/${funnelId}/stats`, query)));
+  }, async ({ projectId, funnelId, entryContext, expectedGoals, ...query }, t) => out(await t.get(`/v1/projects/${projectId}/funnels/${funnelId}/stats`, { ...query, ...(entryContext ? { entryContext: JSON.stringify(entryContext) } : {}), ...(expectedGoals ? { expectedGoals: JSON.stringify(expectedGoals) } : {}) })));
 
   tool('weekly_summary', {
     toolset: 'read', scope: 'read', scoped: true, title: 'Weekly summary',
@@ -776,10 +816,11 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
       from: z.number().int().min(0).optional().describe('Start of the range, epoch milliseconds'),
       to: z.number().int().min(0).optional().describe('End of the range, epoch milliseconds'),
       limit: z.number().int().min(1).max(100).optional().describe('Error groups to return, default 25'),
+      context: improvementContextSchema.optional().describe('Exact source context of an error finding: page, raw release, revision, variant, and device. Its evidence window is represented by the from and to arguments.'),
     }),
     annotations: readOnly,
-  }, async ({ projectId, pageGroup, ...query }, t) => {
-    const list = await t.get(`/v1/projects/${projectId}/errors`, { ...query, group: pageGroup }) as unknown as ErrorListBody;
+  }, async ({ projectId, pageGroup, context, ...query }, t) => {
+    const list = await t.get(`/v1/projects/${projectId}/errors`, { ...query, group: pageGroup, ...(context ? { context: JSON.stringify(context) } : {}) }) as unknown as ErrorListBody;
     return out(compactErrors(list), recordingLinksOf(projectId, list.errors));
   });
 
@@ -791,10 +832,11 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
       errorId: z.string().regex(/^[0-9a-f]{16}$/).describe('The id of an error group'),
       from: z.number().int().min(0).optional().describe('Start of the range, epoch milliseconds, default the last 30 days'),
       to: z.number().int().min(0).optional().describe('End of the range, epoch milliseconds'),
+      context: improvementContextSchema.optional().describe('Exact source context of an error finding. The stack, counts, and examples are restricted to this cohort, within the from and to evidence window.'),
     }),
     annotations: readOnly,
-  }, async ({ projectId, errorId, ...query }, t) => {
-    const detail = await t.get(`/v1/projects/${projectId}/errors/${errorId}`, query) as unknown as ErrorDetailBody;
+  }, async ({ projectId, errorId, context, ...query }, t) => {
+    const detail = await t.get(`/v1/projects/${projectId}/errors/${errorId}`, { ...query, ...(context ? { context: JSON.stringify(context) } : {}) }) as unknown as ErrorDetailBody;
     return out(compactErrorDetail(detail), recordingLinksOf(projectId, [detail]));
   });
 

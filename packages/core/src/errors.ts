@@ -125,7 +125,7 @@ export interface ErrorCohort {
   pageVersion?: string;
   pageRevision: string;
   variant: string;
-  deviceClass: 'desktop' | 'tablet' | 'mobile';
+  deviceClass: 'desktop' | 'tablet' | 'mobile' | 'unknown';
   count: number;
   visits: number;
   lastSeenAt: number;

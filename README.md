@@ -2,6 +2,8 @@
 
 The Hoot Lens MCP server. It lets an AI assistant (Claude, Cursor, VS Code, Codex and other MCP clients) read what Hoot Lens recorded on your websites: visits, replays, heatmaps, funnels, traffic, findings and changes. The assistant sees only what your own Hoot Lens account can see, and only the sites (projects) and scopes you allow.
 
+Version 1.5.0 is prepared for publication with a unified improvement feed and saved finding work. [Source identity](docs/SOURCE.md) pins the imported commit and file hashes.
+
 Version [1.4.1](https://www.npmjs.com/package/@hootlens/mcp/v/1.4.1) is published with first-website setup recovery, consent-aware installation guidance, and npm provenance. Its [release record](docs/RELEASE-1.4.1.md) links the reviewed public source, Linux/Windows Node 20/22 validation, attestation, and installed-package checks. The hosted service releases separately.
 
 A valid connection with no websites returns an empty list and a setup link. Installation guidance keeps website editing access, visitor consent, and received recordings separate.
@@ -14,6 +16,14 @@ You can run it two ways:
 The tool catalog depends on the release and selected toolsets. Source 1.4.0 keeps customer tools discoverable before their optional permissions are granted. Discovering a tool grants no access: the API checks the credential, current site permissions, and requested action every time. Earlier releases may hide tools whose scopes are missing. Check the installed version and inspect `tools/list` on your actual connection. `whoami` is available as a CLI command and an MCP connection-check tool; `doctor` requires 1.2.0 or later.
 
 The read toolset includes `explain_snags`. When the site has AI explanations enabled, a request can send aggregated counts to the explanation provider and use the site owner's monthly account AI allowance. Inspect its tool description before requesting explanations. Doctor reports this caveat without calling the tool.
+
+## Review improvements and track a fix
+
+`review_improvements` combines control snags, JavaScript errors, and funnel drop-offs with their actual count units, evidence windows, source coverage, and investigation steps. Source identities preserve page versions, revisions, variants, and devices. Replay moments require replay access and a retained recording.
+
+`list_finding_work` and `get_finding_work` read saved decisions separately from current evidence. With explicit authorization and read plus annotation permission, `update_finding_work` can assign, snooze, dismiss, reopen, save a GitHub reference, or record a fix already deployed. `list_finding_assignees` returns eligible site teammates without email addresses. Revision checks protect concurrent work, and identical operation retries do not create a second change marker.
+
+A saved GitHub link does not create an issue or establish merge or deployment. A reported deployed fix remains separate from the before-and-after outcome report, which states its own scope and sample limits. Source context and evidence windows can be passed to error and funnel inspection, including ordered funnel goal definitions. The API applies the current site permissions on every request.
 
 ## Requirements
 

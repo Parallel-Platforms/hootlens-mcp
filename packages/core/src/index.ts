@@ -951,3 +951,5 @@ export * from './github';
 export * from './onboarding';
 export * from './source-location';
 export * from './setup-progress';
+export * from './improvements';
+export * from './finding-work';
