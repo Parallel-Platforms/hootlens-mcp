@@ -2,9 +2,9 @@
 
 The Hoot Lens MCP server. It lets an AI assistant (Claude, Cursor, VS Code, Codex and other MCP clients) read what Hoot Lens recorded on your websites: visits, replays, heatmaps, funnels, traffic, findings and changes. The assistant sees only what your own Hoot Lens account can see, and only the sites (projects) and scopes you allow.
 
-Version [1.4.0](https://www.npmjs.com/package/@hootlens/mcp/v/1.4.0) is published with stable customer-tool discovery, per-tool OAuth policies, and npm provenance. Its [release record](docs/RELEASE-1.4.0.md) links the reviewed public source, Linux/Windows Node 20/22 validation, attestation, and installed-package checks. The hosted service releases separately.
+Version [1.4.1](https://www.npmjs.com/package/@hootlens/mcp/v/1.4.1) is published with first-website setup recovery, consent-aware installation guidance, and npm provenance. Its [release record](docs/RELEASE-1.4.1.md) links the reviewed public source, Linux/Windows Node 20/22 validation, attestation, and installed-package checks. The hosted service releases separately.
 
-Prepared source 1.4.1 improves first-website setup: a valid connection with no websites returns an empty list and a setup link, and installation guidance keeps website editing, visitor consent, and received recordings separate. This source update is not publication evidence. [The source inventory](docs/SOURCE.json) identifies the exact imported commit.
+A valid connection with no websites returns an empty list and a setup link. Installation guidance keeps website editing access, visitor consent, and received recordings separate.
 
 You can run it two ways:
 
