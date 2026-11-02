@@ -246,10 +246,10 @@ test('the release sources match the recorded snapshot, including shared imports'
   const source = JSON.parse(await readFile(new URL('../docs/SOURCE.json', import.meta.url), 'utf8'));
   const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   const server = JSON.parse(await readFile(new URL('../server.json', import.meta.url), 'utf8'));
-  assert.equal(source.version, '1.4.0');
-  assert.equal(source.sourceCommit, 'cb61a28ece47cbd1cb9cca1a11aa9ae58b6fac1e');
+  assert.equal(source.version, '1.4.1');
+  assert.equal(source.sourceCommit, 'f51a056add607b5bf8847dd03f510447874246f6');
   assert.equal(source.sourceUpdates, undefined, 'This release imports one complete immutable source commit');
-  assert.equal(Object.keys(source.files).length, 85);
+  assert.equal(Object.keys(source.files).length, 86);
   assert.ok(source.files['src/cli/doctor.ts']);
   assert.equal(manifest.version, source.version);
   assert.equal(server.version, source.version);
@@ -370,9 +370,63 @@ test('the compiled server gates account setup and preserves its retry and consen
   }
 });
 
+test('the compiled setup journey keeps empty accounts connected and requires an explicit recording category', { timeout: 30_000 }, async () => {
+  let hasSite = false;
+  const installRequests = [];
+  const calls = [];
+  const project = { id: 'proj_setup', name: 'Synthetic setup site', role: 'owner' };
+  const api = createServer((request, response) => {
+    calls.push({ method: request.method, path: request.url });
+    response.setHeader('Content-Type', 'application/json');
+    if (request.url === '/v1/access') return response.end(JSON.stringify({
+      account: { id: 'synthetic-setup-owner' }, credential: { kind: 'oauth', projects: 'all', scopes: ['read', 'replay', 'sites:create'] }, projects: hasSite ? [project] : [],
+    }));
+    if (request.url === '/v1/projects') return response.end(JSON.stringify({ projects: hasSite ? [project] : [] }));
+    if (request.url?.startsWith('/v1/projects/proj_setup/install-snippet') && hasSite) {
+      const query = Object.fromEntries(new URL(request.url, 'http://fixture.invalid').searchParams);
+      installRequests.push(query);
+      return response.end(JSON.stringify({ tag: '<script data-project="proj_setup" data-consent-source="onetrust" data-consent-category="C0005"></script>', consent: 'required' }));
+    }
+    response.writeHead(404).end('{}');
+  });
+  await new Promise(resolve => api.listen(0, '127.0.0.1', resolve));
+  const address = api.address(); assert.ok(address && typeof address === 'object');
+  const client = new Client({ name: 'compiled-setup-recovery-fixture', version: '1' });
+  const transport = new StdioClientTransport({ command: process.execPath, args: [cli], cwd: root,
+    env: { ...cleanEnv, HOOTLENS_PAT: 'synthetic_compiled_setup_recovery_fixture', HOOTLENS_API_URL: `http://127.0.0.1:${address.port}` }, stderr: 'pipe' });
+  try {
+    await client.connect(transport, { timeout: 5_000 });
+    const identity = await client.callTool({ name: 'whoami', arguments: {} });
+    assert.ok(!identity.isError);
+    assert.equal(identity.structuredContent.connected, true);
+    assert.deepEqual(identity.structuredContent.sites, []);
+    assert.equal(identity.structuredContent.setupUrl, 'https://hootlens.com/app/setup');
+    const empty = await client.callTool({ name: 'list_projects', arguments: {} });
+    assert.ok(!empty.isError);
+    assert.deepEqual(empty.structuredContent.projects, []);
+    assert.equal(empty.structuredContent.setupUrl, 'https://hootlens.com/app/setup');
+    assert.equal(empty._meta?.['mcp/www_authenticate'], undefined, 'an empty website list never challenges a valid connection');
+    assert.ok(empty.structuredContent.next.some(step => step.includes('connection is valid')));
+    assert.ok(empty.structuredContent.next.some(step => step.includes('repository or CMS')));
+    hasSite = true;
+    const listed = await client.callTool({ name: 'list_projects', arguments: {} });
+    assert.deepEqual(listed.structuredContent.projects.map(site => site.id), ['proj_setup']);
+    for (const consentCategory of [undefined, 'RECORDING_CATEGORY']) {
+      const invalid = await client.callTool({ name: 'get_install_snippet', arguments: { projectId: 'proj_setup', platform: 'nextjs', variant: 'pages', consentSource: 'onetrust', ...(consentCategory ? { consentCategory } : {}) } });
+      assert.equal(invalid.isError, true, 'an unconfigured recording category cannot fetch a publishable CMP snippet');
+    }
+    assert.equal(installRequests.length, 0);
+    const installed = await client.callTool({ name: 'get_install_snippet', arguments: { projectId: 'proj_setup', platform: 'nextjs', variant: 'pages', consentSource: 'onetrust', consentCategory: 'C0005' } });
+    assert.ok(!installed.isError);
+    assert.equal(installed.structuredContent.consent, 'required');
+    assert.deepEqual(installRequests, [{ platform: 'nextjs', variant: 'pages', consentSource: 'onetrust', consentCategory: 'C0005' }]);
+    assert.ok(calls.every(call => call.method === 'GET'), 'connection checks and installation guidance do not create a site or grant consent');
+  } finally { await client.close(); api.closeAllConnections(); await new Promise(resolve => api.close(resolve)); }
+});
+
 test('the standalone bundle reports the prepared version and CLI usage', async () => {
   const version = await run(process.execPath, [cli, '--version'], { cwd: root, env: cleanEnv, timeout: 10_000 });
-  assert.equal(version.stdout.trim(), '1.4.0');
+  assert.equal(version.stdout.trim(), '1.4.1');
   assert.equal(version.stderr, '');
   const help = await run(process.execPath, [cli, '--help'], { cwd: root, env: cleanEnv, timeout: 10_000 });
   assert.match(help.stdout, /login\|logout\|whoami/);
@@ -397,7 +451,7 @@ test('the standalone doctor runs public probes without bearer and redacts invali
   try {
     const result = await run(process.execPath, [cli, 'doctor', '--json', '--toolsets', 'read,replay'], { cwd: root, env: { ...cleanEnv, HOOTLENS_API_URL: origin, HOOTLENS_PAT: 'synthetic-doctor-secret' }, timeout: 15_000 });
     const report = JSON.parse(result.stdout);
-    assert.equal(report.packageVersion, '1.4.0');
+    assert.equal(report.packageVersion, '1.4.1');
     assert.equal(report.ok, true);
     assert.equal(report.authenticatedMetadataVerified, false);
     assert.equal(report.investigationVerified, false);
@@ -441,7 +495,7 @@ test('the built stdio server discovers read tools, defaults to a pinned project 
   const client = new Client({ name: 'public-source-fixture', version: '1.0.0' });
   try {
     await client.connect(transport, { timeout: 10_000 });
-    assert.equal(client.getServerVersion()?.version, '1.4.0');
+    assert.equal(client.getServerVersion()?.version, '1.4.1');
     const tools = await client.listTools({ cursor: '' }, { timeout: 5_000 });
     assert.ok(tools.tools.some(tool => tool.name === 'list_recordings'));
     assert.ok(!tools.tools.some(tool => ['add_note', 'log_change', 'configure', 'submit_issue'].includes(tool.name)));

@@ -362,13 +362,15 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
     const summary = `Connected. ${signedInAs.email ?? (credential.name ? `Signed in through ${credential.name}` : 'Signed in')}, with ${scopes.length ? `the ${scopes.join(', ')} scope${scopes.length === 1 ? '' : 's'}` : 'no scopes'}. ${sites.length ? `${sites.length} site${sites.length === 1 ? '' : 's'}: ${sites.map(site => `${site.name ?? site.id} (${site.id}, ${site.role ?? 'member'})`).join(', ')}.` : 'No sites are reachable with this connection. Ask which website the owner wants to add or whether an existing site needs to be selected when reconnecting.'}`;
     return out({
       connected: true, summary, signedInAs, scopes,
+      ...(!pinned ? { setupUrl: 'https://hootlens.com/app/setup' } : {}),
       siteAccess: credential.projects === undefined || credential.projects === 'all' ? 'all your sites' : `${credential.projects.length} chosen site${credential.projects.length === 1 ? '' : 's'}`,
       sites, ...(pinned ? { pinnedProjectId: pinned } : {}), toolsets: [...options.toolsets],
       ...(!sites.length && !pinned ? { next: [
         'Ask for the intended website URL and platform. Connection approval alone does not create a website or install its tracker.',
         ...(options.toolsets.has('sites') ? ['When the owner asks to add it, call create_site with a stable idempotencyKey. If explicit site-creation permission is missing, the tool will request reconnection before it can create anything.'] : []),
-        'The owner can also add a website in https://hootlens.com/app, then reconnect and share only that site with read/replay access.',
-        'After the site exists, get its installation snippet, install on the intended public pages with visitor consent, and check_install. Never describe site creation as a completed installation.',
+        'The owner can resume website setup at https://hootlens.com/app/setup, then reconnect and share only that site with read/replay access.',
+        'Ask whether this assistant has authorized access to edit the website repository or CMS. A Hoot Lens connection alone does not provide that access. Without it, give the owner the installation snippet or a coding-agent handoff and the setup link.',
+        'After the site exists, get its installation snippet, install on the intended public pages with visitor consent, and check_install. Distinguish tag detection, visitor consent, and a received recording. Never describe site creation as a completed installation.',
       ] } : {}),
     }, sites.map(projectLink));
   });
@@ -381,7 +383,14 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
   }, async (_args, t) => {
     const body = await t.get('/v1/projects');
     const projects = ((body.projects ?? []) as { id: string; name?: string }[]).map(project => ({ ...project, ...(project.id === pinned ? { pinned: true } : {}) }));
-    return out({ ...body, projects, ...(pinned ? { pinnedProjectId: pinned } : {}) }, projects.map(projectLink));
+    return out({ ...body, projects, ...(pinned ? { pinnedProjectId: pinned } : {}), ...(!projects.length && !pinned ? {
+      setupUrl: 'https://hootlens.com/app/setup',
+      next: [
+        'The connection is valid, but no websites are available yet. Ask for the website URL and platform.',
+        'Use whoami to check the approved permissions. Create a site only when the owner asks and sites:create is approved; otherwise the owner can add a website at https://hootlens.com/app/setup and reconnect with that site selected.',
+        'Website creation does not install a tracker. Check whether this assistant can edit the repository or CMS; otherwise provide an installation handoff. Required visitor consent and a received recording must be verified separately.',
+      ],
+    } : {}) }, projects.map(projectLink));
   });
 
   tool('create_site', {
@@ -406,21 +415,28 @@ export function registerTools(server: McpServer, api: Api, options: ToolOptions)
     const project = z.looseObject({ id, name: z.string().optional() }).parse(created.project);
     let install: Obj | undefined;
     try { install = await t.get(`/v1/projects/${project.id}/install-snippet`, { platform, variant }); } catch { /* Creation succeeded. Report the site and a safe follow-up, without creating another site. */ }
-    return out({ ...created, projectId: project.id, dashboardUrl: `https://hootlens.com/app/installation?project=${encodeURIComponent(project.id)}`, ...(install ? { install } : {}), installationAvailable: install !== undefined, setupStatus: { site: 'created', installation: 'not_checked', recording: 'not_checked', consent: 'required' }, next: [
-      install ? 'Install this snippet on the intended public pages and arrange consent before capture.' : `Site created. Call get_install_snippet with projectId ${project.id} to retrieve the tag. Do not create a replacement site.`,
+    return out({ ...created, projectId: project.id, dashboardUrl: `https://hootlens.com/app/setup?site=${encodeURIComponent(project.id)}`, ...(install ? { install } : {}), installationAvailable: install !== undefined, setupStatus: { site: 'created', installation: 'not_checked', recording: 'not_checked', consent: 'required' }, next: [
+      install ? 'The installation snippet is ready. Choose installation by an authorized coding agent, the owner in their CMS, or their developer, and arrange consent before capture.' : `Site created. Call get_install_snippet with projectId ${project.id} to retrieve the tag. Do not create a replacement site.`,
+      'A Hoot Lens connection does not grant access to edit the website. Edit source only with separately authorized repository or CMS access. A chat-only assistant can provide the exact instructions and the setup link above so the owner can continue later.',
       'Required consent: connect your consent platform with data-consent-source="onetrust", "cookiebot" or "gcm", or add data-consent-source="hootlens" for an explicit visitor control. Custom consent integrations must report the visitor\'s actual choice. See https://hootlens.com/docs/INSTALL.md.',
       'Idempotency protects retries for 24 hours. After that, call list_projects and inspect the intended origins before deciding whether another creation is needed.',
       `Call check_install with projectId ${project.id} after installation. Only the install check can report whether the tag loaded and recording data arrived.`,
-      ...(!options.toolsets.has('install') || !options.toolsets.has('read') ? ['This connection hides some setup tools. Enable the read and install toolsets to list existing sites, retrieve snippets and check installation, or open the installation page above.'] : []),
+      ...(!options.toolsets.has('install') || !options.toolsets.has('read') ? ['This connection hides some setup tools. Enable the read and install toolsets to list existing sites, retrieve snippets, and check installation, or open the setup page above.'] : []),
     ] }, [projectLink(project)]);
   });
 
   tool('get_install_snippet', {
     toolset: 'install', scope: 'read', scoped: true, title: 'Get install tag',
     description: `Returns the exact Hoot Lens install for a project and platform: the one script tag, the file or screen it goes in, the code for that platform (Next.js App Router layout.tsx or Pages _document, Vite index.html, Nuxt app.head, SvelteKit app.html, Angular index.html, Astro layout, WordPress, Shopify theme.liquid, Google Tag Manager Custom HTML, Remix, Gatsby, Webflow, Squarespace, Wix, or plain html), the site's allowed addresses and how to check the install. Takes platform (default html, the raw tag). The project ID is public and the snippet contains no secret. Needs the read scope.`,
-    input: z.object({ projectId: projectArg, platform: z.enum(PLATFORM_ORDER as [string, ...string[]]).optional().describe('The site\'s platform. Default html.'), variant: z.enum(['app', 'pages']).optional().describe('For nextjs: app (App Router, the default) or pages (Pages Router). One router per snippet.') }),
+    input: z.object({
+      projectId: projectArg,
+      platform: z.enum(PLATFORM_ORDER as [string, ...string[]]).optional().describe('The site\'s platform. Default html.'),
+      variant: z.enum(['app', 'pages']).optional().describe('For nextjs: app (App Router, the default) or pages (Pages Router). One router per snippet.'),
+      consentSource: z.enum(['hootlens', 'custom', 'onetrust', 'cookiebot', 'gcm']).optional().describe('Consent integration in the returned installation code. Required-consent sites default to the built-in Hoot Lens visitor choice. This choice does not change the site\'s capture policy.'),
+      consentCategory: z.string().regex(/^[A-Za-z][A-Za-z0-9_-]{0,79}$/).optional().describe('The consent platform category ID explicitly covering visitor recording, required for OneTrust, Cookiebot, or Google Consent Mode. A placeholder is not a configured category.'),
+    }).refine(input => !['onetrust', 'cookiebot', 'gcm'].includes(input.consentSource ?? '') || Boolean(input.consentCategory && input.consentCategory !== 'RECORDING_CATEGORY'), { message: 'A consent platform category explicitly covering visitor recording is required.', path: ['consentCategory'] }),
     annotations: readOnly,
-  }, async ({ projectId, platform, variant }, t) => out(await t.get(`/v1/projects/${projectId}/install-snippet`, { platform, variant })));
+  }, async ({ projectId, platform, variant, consentSource, consentCategory }, t) => out(await t.get(`/v1/projects/${projectId}/install-snippet`, { platform, variant, consentSource, consentCategory })));
 
   tool('check_install', {
     toolset: 'install', scope: 'read', scoped: true, title: 'Check the install',

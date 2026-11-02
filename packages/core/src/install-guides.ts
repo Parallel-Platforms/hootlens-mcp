@@ -4,6 +4,26 @@
  * route and through it the MCP tools, so a person and an agent get exactly the same text. Pure, no secrets: the project
  * ID is public. tests/compat/matrix builds the real apps with these exact code blocks.
  */
+import type { ConsentMode } from './index';
+
+export type InstallConsentSource = 'hootlens' | 'onetrust' | 'cookiebot' | 'gcm' | 'custom';
+export interface InstallConsent {
+  consent?: ConsentMode;
+  consentSource?: InstallConsentSource;
+  /** The category in the consent platform that explicitly covers visitor recording. */
+  consentCategory?: string;
+}
+
+export const installConsentSource = (input: InstallConsent): InstallConsentSource | undefined =>
+  input.consentSource ?? (input.consent === 'required' || input.consent === 'regional' ? 'hootlens' : undefined);
+
+const consentAttributes = (input: InstallConsent): Array<[string, string]> => {
+  const source = installConsentSource(input);
+  return source && source !== 'custom' ? [
+    ['data-consent-source', source],
+    ...(source !== 'hootlens' ? [['data-consent-category', input.consentCategory || 'RECORDING_CATEGORY'] as [string, string]] : []),
+  ] : [];
+};
 
 /** One script tag, no inline JavaScript. */
 export const TRACKER_SCRIPT_ORIGIN = 'https://hootlens.com';
@@ -14,8 +34,9 @@ export const DEFAULT_COLLECTOR_ORIGIN = 'https://hootlens-api-368877148687.us-ea
 const attribute = (value: string) => value.replace(/[&"<>]/g, c => `&#${c.charCodeAt(0)};`);
 
 /** The install tag, with data-endpoint added when the workspace uses its own API. */
-export function installTag(projectId: string, endpoint?: string): string {
-  const tag = `<script async src="${TRACKER_SCRIPT_URL}" data-project="${attribute(projectId)}"></script>`;
+export function installTag(projectId: string, endpoint?: string, consent: InstallConsent = {}): string {
+  const attrs = consentAttributes(consent).map(([key, value]) => ` ${key}="${attribute(value)}"`).join('');
+  const tag = `<script async src="${TRACKER_SCRIPT_URL}" data-project="${attribute(projectId)}"${attrs}></script>`;
   return endpoint ? tag.replace('></script>', ` data-endpoint="${attribute(endpoint)}"></script>`) : tag;
 }
 
@@ -38,7 +59,7 @@ export const PLATFORM_ORDER: PlatformKey[] = [
 export const isPlatformKey = (value: unknown): value is PlatformKey =>
   typeof value === 'string' && (PLATFORM_ORDER as string[]).includes(value);
 
-export interface GuideContext {
+export interface GuideContext extends InstallConsent {
   projectId: string;
   /** The collector, when the tag needs a data-endpoint. Left out for the default collector. */
   endpoint?: string;
@@ -64,17 +85,17 @@ export interface GuideData {
   variant?: string;
 }
 
-const NEXT_APP = ({ projectId, endpoint }: GuideContext) =>
-  `import Script from "next/script";\n\nexport default function RootLayout({ children }: { children: React.ReactNode }) {\n  return (\n    <html lang="en">\n      <body>\n        {children}\n        <Script\n          src="${TRACKER_SCRIPT_URL}"\n          data-project="${attribute(projectId)}"${endpoint ? `\n          data-endpoint="${attribute(endpoint)}"` : ''}\n          strategy="afterInteractive"\n        />\n      </body>\n    </html>\n  );\n}`;
+const NEXT_APP = (ctx: GuideContext) =>
+  `import Script from "next/script";\n\nexport default function RootLayout({ children }: { children: React.ReactNode }) {\n  return (\n    <html lang="en">\n      <body>\n        {children}\n        <Script\n          src="${TRACKER_SCRIPT_URL}"\n          data-project="${attribute(ctx.projectId)}"${ctx.endpoint ? `\n          data-endpoint="${attribute(ctx.endpoint)}"` : ''}${consentAttributes(ctx).map(([key, value]) => `\n          ${key}="${attribute(value)}"`).join('')}\n          strategy="afterInteractive"\n        />\n      </body>\n    </html>\n  );\n}`;
 
-const jsxScript = ({ projectId, endpoint }: GuideContext, indent = '') =>
-  `${indent}<script async src="${TRACKER_SCRIPT_URL}" data-project="${attribute(projectId)}"${endpoint ? ` data-endpoint="${attribute(endpoint)}"` : ''} />`;
+const jsxScript = (ctx: GuideContext, indent = '') =>
+  `${indent}<script async src="${TRACKER_SCRIPT_URL}" data-project="${attribute(ctx.projectId)}"${ctx.endpoint ? ` data-endpoint="${attribute(ctx.endpoint)}"` : ''}${consentAttributes(ctx).map(([key, value]) => ` ${key}="${attribute(value)}"`).join('')} />`;
 
-const GTM_HTML = ({ projectId, endpoint }: GuideContext) =>
-  `<script>\n(function () {\n  var s = document.createElement('script');\n  s.async = true;\n  s.src = '${TRACKER_SCRIPT_URL}';\n  s.setAttribute('data-project', '${projectId.replace(/['\\<]/g, '')}');${endpoint ? `\n  s.setAttribute('data-endpoint', '${endpoint.replace(/['\\<]/g, '')}');` : ''}\n  document.head.appendChild(s);\n})();\n</script>`;
+const GTM_HTML = (ctx: GuideContext) =>
+  `<script>\n(function () {\n  var s = document.createElement('script');\n  s.async = true;\n  s.src = '${TRACKER_SCRIPT_URL}';\n  s.setAttribute('data-project', '${ctx.projectId.replace(/['\\<]/g, '')}');${ctx.endpoint ? `\n  s.setAttribute('data-endpoint', '${ctx.endpoint.replace(/['\\<]/g, '')}');` : ''}${consentAttributes(ctx).map(([key, value]) => `\n  s.setAttribute('${key}', '${value.replace(/['\\<]/g, '')}');`).join('')}\n  document.head.appendChild(s);\n})();\n</script>`;
 
 export function guideData(id: PlatformKey, ctx: GuideContext): GuideData {
-  const tag = installTag(ctx.projectId, ctx.endpoint);
+  const tag = installTag(ctx.projectId, ctx.endpoint, ctx);
   const head = (file: string): GuideData['blocks'] => [{ file, code: tag }];
   switch (id) {
     case 'gtm':
@@ -90,7 +111,7 @@ export function guideData(id: PlatformKey, ctx: GuideContext): GuideData {
       };
     case 'wordpress':
       return {
-        id, label: 'WordPress', group: 'One-click', where: 'the site head, through a header and footer scripts plugin or the Hoot Lens plugin',
+        id, label: 'WordPress', group: 'One-click', where: 'the site head, through a header and footer scripts plugin',
         steps: [
           "In WordPress, open Plugins, then Add New, and install a header and footer scripts plugin.",
           "Open that plugin's settings and paste the tag into the header box, before </head>.",
@@ -134,7 +155,7 @@ export function guideData(id: PlatformKey, ctx: GuideContext): GuideData {
         steps: ['Open nuxt.config.ts.', 'Add the script under app.head.', 'Deploy.'],
         blocks: [{
           file: 'nuxt.config.ts',
-          code: `export default defineNuxtConfig({\n  app: {\n    head: {\n      script: [{src: '${TRACKER_SCRIPT_URL}', async: true, 'data-project': '${ctx.projectId.replace(/['\\]/g, '')}'${ctx.endpoint ? `, 'data-endpoint': '${ctx.endpoint.replace(/['\\]/g, '')}'` : ''}}],\n    },\n  },\n});`,
+          code: `export default defineNuxtConfig({\n  app: {\n    head: {\n      script: [{src: '${TRACKER_SCRIPT_URL}', async: true, 'data-project': '${ctx.projectId.replace(/['\\]/g, '')}'${ctx.endpoint ? `, 'data-endpoint': '${ctx.endpoint.replace(/['\\]/g, '')}'` : ''}${consentAttributes(ctx).map(([key, value]) => `, '${key}': '${value.replace(/['\\<]/g, '')}'`).join('')}}],\n    },\n  },\n});`,
         }],
       };
     case 'sveltekit':
@@ -219,14 +240,39 @@ export interface PromptInput extends GuideContext {
   platform: PlatformKey;
 }
 
-const VERIFY = [
-  "Run the site (or deploy it), open a public page in a browser, and in the browser console run `Hootlens.status()`. Expect `state: 'recording'`.",
-  "If the state is anything else, read `reason` and tell me. `waiting-consent` means the site asks visitors first, `not-targeted` means that page is excluded in Hoot Lens settings, and `error` with `collector-rejected` usually means the site's origin is not allowed yet (for localhost, ask me to allow it in Hoot Lens under Installation, Allow localhost for testing).",
-  'Adding `?hootlens=debug` to a page address shows a small panel with the same answer.',
-];
+/** Instructions describe the site's current policy. A missing policy never implies permission to record. */
+export function installConsentInstructions(input: InstallConsent): string[] {
+  const source = installConsentSource(input);
+  const mode = input.consent ?? 'required';
+  return [
+    input.consent === undefined
+      ? 'Confirm the site’s consent policy with its owner. Until it is known, require an explicit visitor recording choice. A loaded tag is not permission to record.'
+      : mode === 'implied'
+      ? 'This site permits recording on load, subject to its page rules, Global Privacy Control, and Do Not Track. Keep a visitor opt-out in the site’s privacy controls.'
+      : mode === 'regional'
+      ? 'This site requires consent in its configured regions. Keep that policy: a loaded tag can wait for the visitor’s choice before recording.'
+      : 'This site requires visitor consent. A loaded tag is not permission to record.',
+    source === 'hootlens'
+      ? 'The tag includes data-consent-source="hootlens": visitors choose “Record my visit” and can withdraw with “Stop recording”. The control stays available after approval and on later visits. No consent code is needed. Only the visitor chooses.'
+      : source && source !== 'custom'
+      ? `The tag follows ${source === 'gcm' ? 'Google Consent Mode' : source === 'cookiebot' ? 'Cookiebot' : 'OneTrust'}. ${!input.consentCategory || input.consentCategory === 'RECORDING_CATEGORY' ? 'Replace RECORDING_CATEGORY with your recording category ID before publishing. ' : ''}Map that category to an explicit visitor choice that covers replay, including withdrawal. Do not assume analytics consent covers recording.`
+      : 'Connect the visitor’s recording choice to (window.hootlens = window.hootlens || []).push([\'consent\', true]); and their refusal or withdrawal to the same command with false. Run these only from real visitor choices, never on page load.',
+    'Never grant consent automatically to pass a check, change the project’s consent policy, or bypass Global Privacy Control or Do Not Track.',
+  ];
+}
+
+export function installVerification(input: InstallConsent): string[] {
+  const requiresChoice = input.consent !== 'implied';
+  return [
+    `Publish, open a permitted public page, and run \`Hootlens.status()\`. ${requiresChoice ? 'Before a new visitor chooses recording, expect `waiting-consent` wherever consent is required. Use the visible recording choice, then expect' : 'For a visitor who has not opted out, expect'} \`state: 'recording'\` when no privacy signal blocks it.`,
+    'Test refusal and withdrawal: recording must stop. Never override privacy signals or erase someone else’s choice to pass a check.',
+    'For another state, read `reason` or use `?hootlens=debug`. Check Pages to record for `not-targeted` and allowed origins for `collector-rejected`. Ask the owner before allowing localhost.',
+    'In Hoot Lens Installation, confirm a recording actually arrived. Open its summary and replay before reporting completion.',
+  ];
+}
 
 /** The tag alone, shown on every platform as the one line to copy. */
-export const tagLine = (ctx: GuideContext): string => installTag(ctx.projectId, ctx.endpoint);
+export const tagLine = (ctx: GuideContext): string => installTag(ctx.projectId, ctx.endpoint, ctx);
 
 /**
  * A short, exact prompt to paste into a coding agent. It carries the public project ID and the platform's file and
@@ -251,10 +297,13 @@ export function agentPrompt(input: PromptInput): string {
     ...(other ? [`   (This is the ${selected} setup. For the ${other.label}, use ${other.where} instead.)`] : []),
     '2. Do not add it to signed-in, admin, account, checkout or other private pages, and do not wrap it in code that reads user data.',
     '3. Do not create or paste any API token or secret. The site ID above is the only value needed.',
-    `4. ${VERIFY[0]}`,
-    `5. ${VERIFY[1]}`,
+    '4. Connect the visitor’s recording choice:',
+    ...installConsentInstructions(input),
+    '5. Verify the real outcome:',
+    ...installVerification(input),
     '',
-    'Then reply with the file you changed and what Hootlens.status() returned.',
+    'Edit only with authorized file or CMS access. A Hoot Lens connection cannot edit this site; otherwise hand these steps to its developer.',
+    'Report files changed, consent tests, and whether a recording arrived. A tag alone does not prove installation.',
   ].join('\n');
 }
 
@@ -282,10 +331,13 @@ export function installMarkdown(input: PromptInput): string {
     '',
     ...guide.blocks.flatMap(block => [block.file ? `\`${block.file}\`:` : 'Code:', '', '```', block.code, '```', '']),
     ...alternativeNote,
-    '## 3. Check it',
+    '## 3. Connect the visitor’s recording choice',
     '',
-    ...VERIFY.map(line => `- ${line}`),
-    '- In the Hoot Lens dashboard, Installation shows "First visit recorded" and links to the replay.',
+    ...installConsentInstructions(input).map(line => `- ${line}`),
+    '',
+    '## 4. Check it',
+    '',
+    ...installVerification(input).map(line => `- ${line}`),
     '',
     'Keep the tag off signed-in and private pages. Passwords, payment fields, one-time codes and anything marked `data-hoot-private` are never recorded.',
     '',
