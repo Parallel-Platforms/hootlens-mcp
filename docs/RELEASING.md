@@ -1,6 +1,6 @@
 # Public MCP releases
 
-Source 1.4.1 is prepared from monorepo commit `f51a056add607b5bf8847dd03f510447874246f6` for first-site setup recovery and consent-aware installation. It is not yet published. Its source inventory remains separate from later public validation, npm provenance, Registry publication, and hosted deployment evidence.
+Version 1.4.1 is published with first-site recovery, resumable setup links, consent-aware installation guidance, and npm provenance. Its [versioned release record](RELEASE-1.4.1.md) binds the exact public source, Linux/Windows Node 20/22 validation, workflow, attestation, and isolated-install checks. The imported source inventory retains its preparation-time status; Registry publication and hosted deployment are verified separately.
 
 Version 1.4.0 is published with stable customer-tool discovery, explicit per-tool OAuth policies, and npm provenance. Its [versioned release record](RELEASE-1.4.0.md) binds the reviewed public source, Linux/Windows Node 20/22 validation, workflow, attestation, and isolated-install checks. The official MCP Registry accepted active 1.4.0, with exact-version and latest entries verified. The hosted service releases separately.
 
