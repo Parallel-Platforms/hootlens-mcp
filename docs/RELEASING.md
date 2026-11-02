@@ -1,6 +1,6 @@
 # Public MCP releases
 
-Version 1.4.1 is published with first-site recovery, resumable setup links, consent-aware installation guidance, and npm provenance. Its [versioned release record](RELEASE-1.4.1.md) binds the exact public source, Linux/Windows Node 20/22 validation, workflow, attestation, and isolated-install checks. The imported source inventory retains its preparation-time status; Registry publication and hosted deployment are verified separately.
+Version 1.4.1 is published with first-site recovery, resumable setup links, consent-aware installation guidance, and npm provenance. Its [versioned release record](RELEASE-1.4.1.md) binds the exact public source, Linux/Windows Node 20/22 validation, workflow, attestation, and isolated-install checks. The official MCP Registry accepted active 1.4.1, with exact-version and latest entries verified. The imported source inventory retains its preparation-time status. The hosted service releases separately.
 
 Version 1.4.0 is published with stable customer-tool discovery, explicit per-tool OAuth policies, and npm provenance. Its [versioned release record](RELEASE-1.4.0.md) binds the reviewed public source, Linux/Windows Node 20/22 validation, workflow, attestation, and isolated-install checks. The official MCP Registry accepted active 1.4.0, with exact-version and latest entries verified. The hosted service releases separately.
 
