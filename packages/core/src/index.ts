@@ -928,13 +928,18 @@ export interface InstallShareRecord {
   platform?: InstallPlatformId;
   /** API origin to put in the tag as data-endpoint, when the workspace uses its own. */
   endpoint?: string;
+  consentSource?: import('./install-guides').InstallConsentSource;
+  consentCategory?: string;
   createdAt: number; expiresAt: number; revokedAt?: number;
 }
-/** GET /v1/install-shares/:token. Public. Nothing else about the project is ever returned. */
+/** GET /v1/install-share. Public install instructions only, without visitor data or account details. */
 export interface InstallSharePage {
   projectId: string;
   tag: string;
   platform: InstallPlatformId | null;
+  consent?: ConsentMode;
+  consentSource?: import('./install-guides').InstallConsentSource;
+  consentCategory?: string;
   status: { tagLoaded: boolean; dataReceived: boolean };
   expiresAt: number;
 }
@@ -945,3 +950,4 @@ export * from './billing';
 export * from './github';
 export * from './onboarding';
 export * from './source-location';
+export * from './setup-progress';

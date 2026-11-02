@@ -4,6 +4,8 @@ The Hoot Lens MCP server. It lets an AI assistant (Claude, Cursor, VS Code, Code
 
 Version [1.4.0](https://www.npmjs.com/package/@hootlens/mcp/v/1.4.0) is published with stable customer-tool discovery, per-tool OAuth policies, and npm provenance. Its [release record](docs/RELEASE-1.4.0.md) links the reviewed public source, Linux/Windows Node 20/22 validation, attestation, and installed-package checks. The hosted service releases separately.
 
+Prepared source 1.4.1 improves first-website setup: a valid connection with no websites returns an empty list and a setup link, and installation guidance keeps website editing, visitor consent, and received recordings separate. This source update is not publication evidence. [The source inventory](docs/SOURCE.json) identifies the exact imported commit.
+
 You can run it two ways:
 
 - **Locally over stdio** with `npx -y @hootlens/mcp` (this package), for clients that can launch a stdio server.
@@ -31,6 +33,8 @@ npx -y @hootlens/mcp login
 Your browser opens Hoot Lens. Choose the projects and permissions to share, and approve. The sign-in is saved in the macOS Keychain, the Linux Secret Service (libsecret), or, where those are not available, a file (`~/.config/hootlens-mcp/credentials.json`, or `%APPDATA%\hootlens-mcp\credentials.json` on Windows). On POSIX systems the fallback uses owner-only mode flags. On Windows it relies on inherited profile ACLs; the package does not enforce an owner-only Windows ACL. Tokens are never printed.
 
 If you have no site yet, enter your website in the connection screen. Creating that website and approving the assistant's access are separate decisions. You can share only the new site with read/replay access; account-wide permission to create future sites is optional. After returning to the assistant, ask it to retrieve the installation instructions for your platform. A connected account and a created site do not establish that the tracking tag is installed or receiving data.
+
+Continue installation at [website setup](https://hootlens.com/app/setup) whenever you return. A ChatGPT connection can retrieve Hoot Lens instructions and evidence, but it cannot edit your website by itself. Use a coding agent with authorized repository access, install through your CMS, or hand the instructions to your developer. For a site requiring consent, connect an explicit recording choice before verifying that a recording arrives. Consent platform categories must expressly cover replay; analytics consent alone is not sufficient.
 
 ```sh
 npx -y @hootlens/mcp whoami   # who is signed in, scopes, projects, token expiry

@@ -2,6 +2,14 @@
 
 All notable changes to `@hootlens/mcp` are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] - Unreleased
+
+### Fixed
+
+- Empty accounts return an empty website list and a resumable setup link instead of asking to reconnect a valid credential.
+- Setup guidance distinguishes ChatGPT analytics access from separately authorized website editing, and verifies installation, visitor choice, received recordings, and actual findings separately.
+- Installation snippets support explicit recording-consent sources and categories, with safe defaults and consistent copied instructions.
+
 ## [1.4.0] - Unreleased
 
 ### Changed

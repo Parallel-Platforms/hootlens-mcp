@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { signupEntrySchema } from './signup-entry';
+import { accountSetupSchema } from './setup-progress';
 import { SIGNUP_CHANNELS, SIGNUP_ASSISTANTS } from './signup-source';
 
 const count = z.number().int().nonnegative();
@@ -48,6 +49,7 @@ export type BusinessAccountConnection = z.infer<typeof businessAccountConnection
 export type BusinessAccountConnections = z.infer<typeof businessAccountConnectionsSchema>;
 export const businessPlanStatusSchema = z.enum(['free', 'paidActive', 'trial', 'complimentary', 'pastDue', 'other', 'unknown']);
 export const businessAccountInsightSchema = z.object({
+  setup: z.object({ coverage: z.enum(['complete', 'partial', 'unavailable']), progress: accountSetupSchema.omit({ userId: true, origin: true }).nullable() }).optional(),
   id: z.string(), email: z.string().nullable(), displayName: z.string().nullable(), emailVerified: z.boolean(), disabled: z.boolean(),
   population: z.enum(['customer', 'internal', 'disabled', 'anonymous']), excludedReason: z.string().nullable(),
   createdAt: timestamp, lastSignInAt: timestamp, planStatus: businessPlanStatusSchema, acquisitionChannel: z.string().nullable(),
